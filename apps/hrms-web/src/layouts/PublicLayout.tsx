@@ -76,6 +76,16 @@ export function PublicLayout() {
             <p className="mb-2 font-semibold text-white">Legal</p>
             <ul className="space-y-1">
               <li>
+                <Link to="/terms" className="hover:text-white">
+                  Terms of Service
+                </Link>
+              </li>
+              <li>
+                <Link to="/privacy" className="hover:text-white">
+                  Privacy Notice
+                </Link>
+              </li>
+              <li>
                 <Link to="/licence" className="hover:text-white">
                   Licence
                 </Link>

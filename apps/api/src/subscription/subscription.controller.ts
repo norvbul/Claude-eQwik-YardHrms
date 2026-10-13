@@ -4,7 +4,7 @@ import { TenantPermissions as P } from '@yardhrms/authorization';
 import { redeemCodeSchema } from '@yardhrms/types';
 import { z } from 'zod';
 import { requireTenant, type AuthContext } from '../auth/auth-context';
-import { AllowReadOnly, Auth, Permissions, RateLimit } from '../common/decorators';
+import { AllowReadOnly, Auth, Permissions, Public, RateLimit } from '../common/decorators';
 import { invalidState } from '../common/errors';
 import { ZBody } from '../common/zod';
 import { EntitlementsService } from '../entitlements/entitlements.service';
@@ -62,7 +62,14 @@ export class SubscriptionController {
 
   @Get('plans')
   @Permissions(P.SUBSCRIPTION_READ)
-  async plans() {
+  plans() {
+    return this.publicPlans();
+  }
+
+  /** Public pricing for the landing page (active plans only; no customer data). */
+  @Get('public-plans')
+  @Public()
+  async publicPlans() {
     const plans = await this.prisma.plan.findMany({ where: { status: 'ACTIVE' }, include: { features: { include: { feature: true } } }, orderBy: { employeeLimit: 'asc' } });
     return plans.map((p) => ({
       code: p.code,

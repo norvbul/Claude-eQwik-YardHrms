@@ -144,12 +144,16 @@ export function Register() {
             label={
               <span>
                 I accept the{' '}
-                <Link to="/licence" target="_blank" className="text-brand underline">
-                  licence terms
+                <Link to="/terms" target="_blank" className="text-brand underline">
+                  Terms of Service
+                </Link>
+                , have read the{' '}
+                <Link to="/privacy" target="_blank" className="text-brand underline">
+                  Privacy Notice
                 </Link>{' '}
-                and{' '}
+                and the{' '}
                 <Link to="/disclaimer" target="_blank" className="text-brand underline">
-                  disclaimer
+                  payroll disclaimer
                 </Link>
               </span>
             }

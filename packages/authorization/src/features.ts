@@ -79,11 +79,16 @@ export interface SeedPlan {
   durationMonths: number | null;
   gracePeriodDays: number;
   features: FeatureCode[];
+  /**
+   * Proposed annual price in JMD, GCT-exclusive (researched 2026-10-13 against local offerings; owner to
+   * confirm). Applied only to plans whose price is still unset; never overwrites a price set by Qwik.
+   */
+  proposedPrice: string | null;
 }
 
 /**
- * PRD §7.1 recommended initial tiers. Seed defaults only — prices are intentionally left unset
- * (null) until Qwik approves commercial pricing. All values are editable in the Licence Manager.
+ * PRD §7.1 recommended initial tiers with proposed annual JMD prices (see docs/pricing.md). All values
+ * are editable in the Licence Manager and the seed never overwrites a price Qwik has set.
  */
 export const SEED_PLANS: SeedPlan[] = [
   {
@@ -95,6 +100,7 @@ export const SEED_PLANS: SeedPlan[] = [
     durationMonths: null,
     gracePeriodDays: 0,
     features: ['EMPLOYEES', 'LEAVE', 'TIMESHEETS'],
+    proposedPrice: '0.00',
   },
   {
     code: 'STARTER',
@@ -105,6 +111,7 @@ export const SEED_PLANS: SeedPlan[] = [
     durationMonths: 12,
     gracePeriodDays: 14,
     features: ['EMPLOYEES', 'LEAVE', 'TIMESHEETS', 'OVERTIME', 'PAYROLL', 'PAYSLIPS'],
+    proposedPrice: '95000.00',
   },
   {
     code: 'PROFESSIONAL',
@@ -115,6 +122,7 @@ export const SEED_PLANS: SeedPlan[] = [
     durationMonths: 12,
     gracePeriodDays: 14,
     features: ['EMPLOYEES', 'LEAVE', 'TIMESHEETS', 'OVERTIME', 'PAYROLL', 'PAYSLIPS', 'BULK_IMPORT', 'ADVANCED_REPORTS', 'AUDIT_VIEW'],
+    proposedPrice: '295000.00',
   },
   {
     code: 'BUSINESS',
@@ -125,5 +133,6 @@ export const SEED_PLANS: SeedPlan[] = [
     durationMonths: 12,
     gracePeriodDays: 30,
     features: ['EMPLOYEES', 'LEAVE', 'TIMESHEETS', 'OVERTIME', 'PAYROLL', 'PAYSLIPS', 'BULK_IMPORT', 'ADVANCED_REPORTS', 'AUDIT_VIEW'],
+    proposedPrice: '595000.00',
   },
 ];

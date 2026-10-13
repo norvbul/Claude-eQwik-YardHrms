@@ -181,6 +181,12 @@ export function AppLayout() {
           <Link to="/copyright" className="hover:text-white">
             Copyright
           </Link>
+          <Link to="/terms" className="hover:text-white">
+            Terms
+          </Link>
+          <Link to="/privacy" className="hover:text-white">
+            Privacy
+          </Link>
         </div>
         <p className="mt-1">© {new Date().getFullYear()} Qwik Business Solutions™</p>
       </div>

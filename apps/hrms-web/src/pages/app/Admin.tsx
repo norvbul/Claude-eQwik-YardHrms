@@ -665,7 +665,7 @@ export function Subscription() {
       </div>
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
         <Card>
-          <CardHeader title="Available plans" description="Contact Qwik Business Solutions for pricing" />
+          <CardHeader title="Available plans" description="Annual prices in JMD, excluding GCT where applicable" />
           <DataTable
             rows={plans.data}
             rowKey={(p: any) => p.code}

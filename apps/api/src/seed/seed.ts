@@ -32,14 +32,18 @@ export async function seedPlatform(prisma: PrismaService, provisioning: Provisio
   });
   for (const p of SEED_PLANS) {
     const existing = await prisma.plan.findUnique({ where: { code: p.code } });
-    if (existing) continue; // never overwrite values edited in the Licence Manager
+    if (existing) {
+      // never overwrite values edited in the Licence Manager; only fill a price that was never set
+      if (existing.price === null && p.proposedPrice !== null) await prisma.plan.update({ where: { id: existing.id }, data: { price: p.proposedPrice } });
+      continue;
+    }
     await prisma.plan.create({
       data: {
         productId: product.id,
         code: p.code,
         name: p.name,
         isFree: p.isFree,
-        price: null, // commercial prices intentionally unset until approved by Qwik (PRD §17)
+        price: p.proposedPrice, // proposed pricing (docs/pricing.md); editable in the Licence Manager
         currency: 'JMD',
         durationMonths: p.durationMonths,
         employeeLimit: p.employeeLimit,

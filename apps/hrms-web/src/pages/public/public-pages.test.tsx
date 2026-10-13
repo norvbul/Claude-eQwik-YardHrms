@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { Landing } from './Landing';
-import { About, Copyright, Disclaimer, Licence } from './Legal';
+import { About, Copyright, Disclaimer, Licence, Privacy, Terms } from './Legal';
 
 const inRouter = (ui: React.ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>);
 
@@ -20,6 +20,8 @@ describe('public pages (HR-001, HR-003)', () => {
     ['Licence', Licence],
     ['Disclaimer', Disclaimer],
     ['Copyright', Copyright],
+    ['Terms', Terms],
+    ['Privacy', Privacy],
   ])('%s page carries Qwik Business Solutions attribution', (_name, Page) => {
     const { container } = inRouter(<Page />);
     expect(container.textContent).toMatch(/Qwik Business Solutions/);
@@ -29,5 +31,14 @@ describe('public pages (HR-001, HR-003)', () => {
   it('disclaimer states that statutory figures are not certified', () => {
     const { container } = inRouter(<Disclaimer />);
     expect(container.textContent).toMatch(/payroll/i);
+  });
+});
+
+describe('privacy notice (Data Protection Act, 2020)', () => {
+  it('states retention periods from the same catalogue the system enforces, incl. 7-year payroll records', () => {
+    const { container } = inRouter(<Privacy />);
+    expect(container.textContent).toMatch(/Data Protection Act, 2020/);
+    expect(container.textContent).toMatch(/Payroll runs, payslips and statutory deduction records7 years/);
+    expect(container.textContent).toMatch(/Office of the Information Commissioner/);
   });
 });

@@ -1,5 +1,6 @@
 import { Button } from '@yardhrms/ui';
 import { BadgeCheck, CalendarDays, Clock, FileSpreadsheet, Lock, Receipt, ShieldCheck, Users, Wallet } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 const features = [
@@ -101,6 +102,8 @@ export function Landing() {
         </div>
       </section>
 
+      <Pricing />
+
       <section className="mx-auto max-w-6xl px-4 py-16">
         <h2 className="text-center text-2xl font-bold">What customers say</h2>
         <div className="mt-8 grid gap-5 md:grid-cols-3">
@@ -122,5 +125,64 @@ export function Landing() {
         </div>
       </section>
     </>
+  );
+}
+
+interface PublicPlan {
+  code: string;
+  name: string;
+  isFree: boolean;
+  price: string | null;
+  currency: string;
+  durationMonths: number | null;
+  employeeLimit: number;
+  userLimit: number;
+  features: string[];
+}
+
+/** Prices come from the Licence Manager (editable by Qwik); nothing is hardcoded here. */
+function Pricing() {
+  const [plans, setPlans] = useState<PublicPlan[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/v1/subscription/public-plans')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b) => alive && b?.data && setPlans(b.data))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
+  if (!plans?.length) return null;
+  const fmt = (v: string, c: string) => `${c} ${Number(v).toLocaleString('en-JM', { maximumFractionDigits: 0 })}`;
+  return (
+    <section id="pricing" className="bg-slate-50 py-16">
+      <div className="mx-auto max-w-6xl px-4">
+        <h2 className="text-center text-2xl font-bold">Simple, transparent pricing</h2>
+        <p className="mt-2 text-center text-sm text-slate-500">Prices exclude GCT where applicable. Paid plans are billed annually and paid by bank transfer, cash or cheque.</p>
+        <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {plans.map((p) => (
+            <div key={p.code} className={`flex flex-col rounded-2xl border bg-white p-6 ${p.code === 'PROFESSIONAL' ? 'border-brand shadow-lg' : 'border-slate-200'}`}>
+              <h3 className="text-lg font-semibold">{p.name}</h3>
+              <p className="mt-3 text-3xl font-bold text-slate-900">
+                {p.isFree ? 'Free' : p.price ? fmt(p.price, p.currency) : 'Contact us'}
+                {!p.isFree && p.price && <span className="text-sm font-medium text-slate-500"> / {p.durationMonths === 12 || !p.durationMonths ? 'year' : `${p.durationMonths} months`}</span>}
+              </p>
+              <p className="mt-1 text-sm text-slate-500">
+                Up to {p.employeeLimit} employees · {p.userLimit} users
+              </p>
+              <ul className="mt-4 flex-1 space-y-1 text-sm text-slate-600">
+                {p.features.map((f) => (
+                  <li key={f}>✓ {f}</li>
+                ))}
+              </ul>
+              <Link to="/register" className="mt-6 inline-flex justify-center rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand/90">
+                {p.isFree ? 'Start Free' : 'Start free, upgrade later'}
+              </Link>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }

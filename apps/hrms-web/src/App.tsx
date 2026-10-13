@@ -5,7 +5,7 @@ import { AppLayout, RequireSession } from '@/layouts/AppLayout';
 import { PublicLayout } from '@/layouts/PublicLayout';
 import { AcceptInvite, ForgotPassword, Login, Register, ResetPassword, VerifyEmail } from '@/pages/public/Auth';
 import { Landing } from '@/pages/public/Landing';
-import { About, Copyright, Disclaimer, Licence } from '@/pages/public/Legal';
+import { About, Copyright, Disclaimer, Licence, Privacy, Terms } from '@/pages/public/Legal';
 import { MfaChallenge, MfaSetup, SelectOrganization } from '@/pages/public/Mfa';
 import { Dashboard } from '@/pages/app/Dashboard';
 
@@ -42,6 +42,8 @@ export function App() {
           <Route path="licence" element={<Licence />} />
           <Route path="disclaimer" element={<Disclaimer />} />
           <Route path="copyright" element={<Copyright />} />
+          <Route path="terms" element={<Terms />} />
+          <Route path="privacy" element={<Privacy />} />
         </Route>
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
