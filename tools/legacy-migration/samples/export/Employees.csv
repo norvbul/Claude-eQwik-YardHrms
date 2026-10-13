@@ -1,0 +1,7 @@
+EmpID,Emp No,First Name,Middle,Surname,DOB,Sex,Email,Phone,Address,Town,Parish,TRN,NIS,NHT,Dept,Branch,Job Title,Start Date,Pay Cycle,Pay Basis,Basic Pay,Rate/Hr,OT?,Status,End Date,Leaving Reason
+L-001,BMT-001,ANDREA,,CAMPBELL,14/02/1988,F,andrea.c@example.com,876-555-0101,1 Hope Rd,Kingston,St. Andrew,123-456-789,A123456,NHT77881,D2,B1,P2,03/01/2019,Monthly,Salaried,"$250,000.00",,N,Current,,
+L-002,BMT-002,Omar,Ray,Clarke,1995-07-30,M,,876-555-0102,,Montego Bay,St James,234567890,B234567,,D1,B2,Warehouse Associate,15/06/2021,Weekly,Wage,,"1,250.00",Y,Current,,
+L-003,BMT-003,keisha,,brown,02/11/1990,F,keisha@example,,,,,345678901,,,D1,B1,P1,01/09/2020,Fortnightly,Hourly,,980,Y,Current,,
+L-004,BMT-004,Devon,,Reid,05/05/1985,M,,,,,,456789012,,,D1,B1,P1,10/01/2015,Bi-Weekly,Hourly,,900,N,Resigned,31/03/2023,Relocated
+L-005,BMT-005,Marcia,,Gordon,22/08/1979,F,,,,,,123456789,,,D2,B1,P2,01/02/2018,Monthly,Hourly,,1500,N,Current,,
+L-006,BMT-006,Paul,,Grant,,M,,,,,,,,,D9,B1,P1,31/02/2022,Weekly,Wage,,850,N,Current,,

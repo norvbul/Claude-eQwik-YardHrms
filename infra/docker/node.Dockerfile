@@ -24,6 +24,7 @@ COPY packages/types/package.json packages/types/
 COPY packages/payroll-engine/package.json packages/payroll-engine/
 COPY packages/ui/package.json packages/ui/
 COPY packages/configuration/package.json packages/configuration/
+COPY tools/legacy-migration/package.json tools/legacy-migration/
 COPY prisma prisma
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
@@ -31,7 +32,8 @@ FROM deps AS build
 COPY . .
 RUN pnpm run build:packages \
   && pnpm --filter @yardhrms/api run build \
-  && pnpm --filter @yardhrms/worker run build
+  && pnpm --filter @yardhrms/worker run build \
+  && pnpm --filter @yardhrms/legacy-migration run build
 
 # Runtime images run as the unprivileged "node" user. The full workspace node_modules is kept so the
 # generated Prisma client and native modules (argon2) match the build exactly.

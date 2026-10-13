@@ -1,0 +1,28 @@
+{
+  "name": "@yardhrms/legacy-migration",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Operator ETL tooling: legacy YardHRMS Google Sheets exports -> eQwik YardHRMS MySQL (PRD section 14)",
+  "bin": { "yardhrms-migrate": "dist/cli.js" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "migrate": "node dist/cli.js"
+  },
+  "dependencies": {
+    "@prisma/client": "6.19.0",
+    "@yardhrms/api": "workspace:*",
+    "@yardhrms/types": "workspace:*",
+    "dotenv": "17.2.3",
+    "exceljs": "4.4.0",
+    "reflect-metadata": "0.2.2",
+    "@nestjs/core": "11.1.6",
+    "@nestjs/common": "11.1.6"
+  },
+  "devDependencies": {
+    "@types/node": "22.18.12",
+    "typescript": "5.9.3",
+    "vitest": "3.2.4"
+  }
+}

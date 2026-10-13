@@ -27,7 +27,7 @@ export function toCsv(r: ReportResult): Buffer {
   const lines = [r.columns.map((c) => esc(c.label)).join(',')];
   for (const row of r.rows) lines.push(r.columns.map((c) => esc(row[c.key])).join(','));
   if (r.totals) lines.push(r.columns.map((c, i) => esc(i === 0 ? 'TOTAL' : r.totals![c.key] ?? '')).join(','));
-  return Buffer.from('﻿' + lines.join('\r\n') + '\r\n', 'utf8');
+  return Buffer.from('\uFEFF' + lines.join('\r\n') + '\r\n', 'utf8');
 }
 
 export async function toXlsx(r: ReportResult, companyName: string): Promise<Buffer> {

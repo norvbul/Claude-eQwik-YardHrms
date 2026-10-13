@@ -161,7 +161,13 @@ export class PayslipService implements OnModuleInit {
       doc.fontSize(9).font('Helvetica').text(`Pay date: ${isoDay(slip.payDate)}`, 40, 80, { width: W - 15, align: 'right' });
 
       let y = 122;
-      if (!certified) {
+      const legacy = slip.run.runNumber.startsWith('LEGACY-');
+      if (legacy) {
+        doc.rect(40, y, W, 30).fill('#e0f2fe');
+        doc.fillColor('#075985').fontSize(8.5).font('Helvetica-Bold').text('HISTORICAL RECORD — IMPORTED FROM THE LEGACY YARDHRMS SYSTEM', 50, y + 5);
+        doc.font('Helvetica').text('Amounts are reproduced from the legacy payroll export as approved at the time; they were not recalculated by this system.', 50, y + 16, { width: W - 20 });
+        y += 38;
+      } else if (!certified) {
         doc.rect(40, y, W, 30).fill('#fef3c7');
         doc.fillColor('#92400e').fontSize(8.5).font('Helvetica-Bold').text('NOT CERTIFIED FOR LIVE PAYROLL', 50, y + 5);
         doc.font('Helvetica').text('Statutory deduction rules have not completed compliance certification. Figures must be verified by a qualified Jamaican payroll specialist.', 50, y + 16, { width: W - 20 });

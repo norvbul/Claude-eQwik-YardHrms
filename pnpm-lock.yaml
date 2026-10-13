@@ -436,6 +436,43 @@ importers:
         specifier: 3.2.4
         version: 3.2.4(@types/node@22.18.12)(jiti@2.7.0)(jsdom@26.1.0)(terser@5.51.2)
 
+  tools/legacy-migration:
+    dependencies:
+      '@nestjs/common':
+        specifier: 11.1.6
+        version: 11.1.6(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/core':
+        specifier: 11.1.6
+        version: 11.1.6(@nestjs/common@11.1.6(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.6)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(typescript@5.9.3))(typescript@5.9.3)
+      '@yardhrms/api':
+        specifier: workspace:*
+        version: link:../../apps/api
+      '@yardhrms/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+      dotenv:
+        specifier: 17.2.3
+        version: 17.2.3
+      exceljs:
+        specifier: 4.4.0
+        version: 4.4.0
+      reflect-metadata:
+        specifier: 0.2.2
+        version: 0.2.2
+    devDependencies:
+      '@types/node':
+        specifier: 22.18.12
+        version: 22.18.12
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: 3.2.4
+        version: 3.2.4(@types/node@22.18.12)(jiti@2.7.0)(jsdom@26.1.0)(terser@5.51.2)
+
 packages:
 
   '@adobe/css-tools@4.5.0':

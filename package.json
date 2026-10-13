@@ -11,7 +11,7 @@
   },
   "scripts": {
     "build:packages": "pnpm --filter @yardhrms/authorization --filter @yardhrms/types --filter @yardhrms/payroll-engine run build",
-    "build": "pnpm run build:packages && pnpm --filter @yardhrms/api run build && pnpm --filter @yardhrms/worker run build && pnpm --filter @yardhrms/hrms-web run build && pnpm --filter @yardhrms/license-admin-web run build",
+    "build": "pnpm run build:packages && pnpm --filter @yardhrms/api run build && pnpm --filter @yardhrms/worker run build && pnpm --filter @yardhrms/legacy-migration run build && pnpm --filter @yardhrms/hrms-web run build && pnpm --filter @yardhrms/license-admin-web run build",
     "typecheck": "pnpm -r --if-present run typecheck",
     "lint": "eslint .",
     "test": "pnpm run test:unit && pnpm run test:integration",
@@ -25,7 +25,8 @@
     "dev:api": "pnpm --filter @yardhrms/api run dev",
     "dev:worker": "pnpm --filter @yardhrms/worker run dev",
     "dev:hrms": "pnpm --filter @yardhrms/hrms-web run dev",
-    "dev:admin": "pnpm --filter @yardhrms/license-admin-web run dev"
+    "dev:admin": "pnpm --filter @yardhrms/license-admin-web run dev",
+    "migrate:legacy": "node tools/legacy-migration/dist/cli.js"
   },
   "devDependencies": {
     "@eslint/js": "9.39.1",

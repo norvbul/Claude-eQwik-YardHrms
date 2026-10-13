@@ -1,0 +1,29 @@
+{
+  "dateOrder": "DMY",
+  "sources": {
+    "departments": { "file": "Departments.csv", "columns": { "legacyId": "DeptID", "name": "Dept Name", "costCenter": "Cost Centre" } },
+    "branches": { "file": "Branches.csv", "columns": { "legacyId": "BranchID", "name": "Branch", "parish": "Parish" } },
+    "positions": { "file": "Positions.csv", "columns": { "legacyId": "PosID", "name": "Job Title", "department": "Dept" } },
+    "employees": {
+      "file": "Employees.csv",
+      "columns": {
+        "legacyId": "EmpID", "employeeNumber": "Emp No", "firstName": "First Name", "middleName": "Middle", "lastName": "Surname",
+        "dateOfBirth": "DOB", "gender": "Sex", "email": "Email", "phone": "Phone", "addressLine1": "Address", "city": "Town",
+        "parish": "Parish", "trn": "TRN", "nisNumber": "NIS", "nhtNumber": "NHT", "department": "Dept", "branch": "Branch",
+        "position": "Job Title", "hireDate": "Start Date", "payFrequency": "Pay Cycle", "payType": "Pay Basis",
+        "salaryPerPeriod": "Basic Pay", "hourlyRate": "Rate/Hr", "overtimeEligible": "OT?", "status": "Status",
+        "terminationDate": "End Date", "terminationReason": "Leaving Reason"
+      }
+    },
+    "leaveBalances": { "file": "LeaveBalances.csv", "columns": { "employee": "EmpID", "leaveType": "Leave Code", "days": "Balance", "asOfDate": "As At" } },
+    "payrollHistory": {
+      "file": "PayrollHistory.csv",
+      "columns": {
+        "employee": "Emp", "frequency": "Cycle", "periodStart": "From", "periodEnd": "To", "payDate": "Paid On", "grossPay": "Gross",
+        "nis": "NIS Emp", "nht": "NHT Emp", "edtax": "Ed Tax Emp", "paye": "PAYE", "otherDeductions": "Other Ded", "netPay": "Net",
+        "employerNis": "NIS Er", "employerNht": "NHT Er", "employerEdtax": "Ed Tax Er", "heart": "HEART", "regularHours": "Reg Hrs", "overtimeHours": "OT Hrs"
+      }
+    },
+    "licences": { "file": "Licences.csv", "columns": { "installationId": "InstallationID", "companyName": "Company", "email": "Contact Email", "licenceType": "Licence", "expiresOn": "Expiry", "status": "State" } }
+  }
+}

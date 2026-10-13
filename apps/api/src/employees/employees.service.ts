@@ -157,8 +157,16 @@ export class EmployeesService {
   }
 
   /** Creates an employee inside the caller's transaction (used by API and bulk import). */
-  async createInTx(tx: Tx, auth: Pick<TenantAuth, 'tenantId' | 'user'>, d: EmployeeCreateInput, source: 'MANUAL' | 'IMPORT' = 'MANUAL') {
-    await this.entitlements.assertEmployeeCapacity(tx, auth.tenantId, 1);
+  async createInTx(
+    tx: Tx,
+    auth: Pick<TenantAuth, 'tenantId' | 'user'>,
+    d: EmployeeCreateInput,
+    source: 'MANUAL' | 'IMPORT' | 'MIGRATION' = 'MANUAL',
+    /** Legacy migration only: historical (terminated/inactive) employees do not consume active capacity. */
+    legacy?: { status: 'ACTIVE' | 'INACTIVE' | 'TERMINATED'; terminationDate?: string | null; terminationReason?: string | null },
+  ) {
+    const status = legacy?.status ?? 'ACTIVE';
+    if (status === 'ACTIVE') await this.entitlements.assertEmployeeCapacity(tx, auth.tenantId, 1);
     await this.validateRefs(tx, auth.tenantId, d);
     const dup = await tx.employee.findUnique({ where: { tenantId_employeeNumber: { tenantId: auth.tenantId, employeeNumber: d.employeeNumber } }, select: { id: true } });
     if (dup) throw conflict(`Employee number ${d.employeeNumber} is already in use`);
@@ -195,6 +203,9 @@ export class EmployeesService {
         standardHoursOverride: decOrNull(d.standardHoursOverride),
         overtimeEligible: d.overtimeEligible,
         statutoryExemptions: d.statutoryExemptions ?? [],
+        status,
+        terminationDate: toDate(legacy?.terminationDate ?? null),
+        terminationReason: legacy?.terminationReason ?? null,
         source,
         createdById: auth.user.id,
       },

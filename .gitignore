@@ -16,3 +16,4 @@ playwright-report/
 .storage-test/
 dump.rdb
 infra/docker/compose.env
+tools/legacy-migration/input/

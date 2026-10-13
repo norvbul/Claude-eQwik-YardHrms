@@ -1,0 +1,134 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'claude/**']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  static:
+    name: Lint, typecheck, unit tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}', cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - run: pnpm build:packages
+      - run: pnpm lint --max-warnings 0
+      # Worker and migration tool compile against the API's build output, so build first.
+      - run: pnpm build
+      - run: pnpm typecheck
+      - run: pnpm test:unit
+
+  integration:
+    name: API integration tests (AC-01..AC-15)
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ci-root
+          MYSQL_DATABASE: yardhrms_test
+          MYSQL_USER: yard
+          MYSQL_PASSWORD: ci-pass
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci-root --silent"
+          --health-interval=5s --health-timeout=5s --health-retries=30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}', cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Allow trigger creation by the application user (binary logging is on in MySQL 8.4)
+        run: mysql -h 127.0.0.1 -uroot -pci-root -e "SET GLOBAL log_bin_trust_function_creators = 1;"
+      - name: Write CI .env (ephemeral keys)
+        run: |
+          cp .env.example .env
+          sed -i "s|^FIELD_ENCRYPTION_KEY=.*|FIELD_ENCRYPTION_KEY=$(openssl rand -base64 32)|" .env
+          sed -i "s|^TOKEN_HMAC_KEY=.*|TOKEN_HMAC_KEY=$(openssl rand -base64 32)|" .env
+          sed -i "s|^DATABASE_URL=.*|DATABASE_URL=mysql://yard:ci-pass@127.0.0.1:3306/yardhrms_test|" .env
+          sed -i "s|^TEST_DATABASE_URL=.*|TEST_DATABASE_URL=mysql://yard:ci-pass@127.0.0.1:3306/yardhrms_test|" .env
+          sed -i "s|^REDIS_URL=.*|REDIS_URL=|" .env
+      - run: pnpm db:generate
+      - run: pnpm build:packages
+      - run: pnpm test:integration
+
+  e2e:
+    name: Browser end-to-end journeys
+    runs-on: ubuntu-latest
+    needs: [static]
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ci-root
+          MYSQL_DATABASE: yardhrms
+          MYSQL_USER: yard
+          MYSQL_PASSWORD: ci-pass
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci-root --silent"
+          --health-interval=5s --health-timeout=5s --health-retries=30
+      redis:
+        image: redis:7.4-alpine
+        ports: ['6379:6379']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}', cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: mysql -h 127.0.0.1 -uroot -pci-root -e "SET GLOBAL log_bin_trust_function_creators = 1;"
+      - name: Write CI .env (ephemeral keys, synthetic demo data only)
+        run: |
+          cp .env.example .env
+          sed -i "s|^FIELD_ENCRYPTION_KEY=.*|FIELD_ENCRYPTION_KEY=$(openssl rand -base64 32)|" .env
+          sed -i "s|^TOKEN_HMAC_KEY=.*|TOKEN_HMAC_KEY=$(openssl rand -base64 32)|" .env
+          sed -i "s|^DATABASE_URL=.*|DATABASE_URL=mysql://yard:ci-pass@127.0.0.1:3306/yardhrms|" .env
+          sed -i "s|^CORS_ORIGINS=.*|CORS_ORIGINS=http://127.0.0.1:5173,http://127.0.0.1:5174,http://localhost:5173,http://localhost:5174|" .env
+          sed -i "s|^SEED_PLATFORM_ADMIN_EMAIL=.*|SEED_PLATFORM_ADMIN_EMAIL=admin@qwik-ci.test|" .env
+          sed -i "s|^SEED_PLATFORM_ADMIN_PASSWORD=.*|SEED_PLATFORM_ADMIN_PASSWORD=$(openssl rand -base64 18)Aa1!|" .env
+          sed -i "s|^SEED_DEMO_TENANT=.*|SEED_DEMO_TENANT=true|" .env
+          echo "RUN_WORKER_IN_API=true" >> .env
+      - run: pnpm db:generate
+      - run: pnpm db:migrate
+      - run: pnpm build:packages && pnpm --filter @yardhrms/api run build
+      - run: pnpm db:seed
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+        env: { E2E_START_SERVERS: 'true' }
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
+
+  docker:
+    name: Docker images build
+    runs-on: ubuntu-latest
+    needs: [static]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - run: docker build -f infra/docker/node.Dockerfile --target api -t yardhrms/api:ci .
+      - run: docker build -f infra/docker/node.Dockerfile --target worker -t yardhrms/worker:ci .
+      - run: docker build -f infra/docker/web.Dockerfile --build-arg APP=hrms-web -t yardhrms/hrms-web:ci .
+      - run: docker build -f infra/docker/web.Dockerfile --build-arg APP=license-admin-web -t yardhrms/license-admin-web:ci .
