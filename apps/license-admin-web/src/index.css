@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand: 49 46 129; /* #312e81 indigo-900 — Qwik platform */
+  --accent: 242 183 5; /* #f2b705 Qwik gold */
+}

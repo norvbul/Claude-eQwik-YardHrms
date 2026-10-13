@@ -30,7 +30,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     queryKey: ['me'],
     queryFn: async () => {
       try {
-        return await api.get<MeResponse>('/auth/me');
+        const me = await api.get<MeResponse>('/auth/me');
+        setCsrf(me.csrfToken); // synchronously, before any child effect issues a write
+        return me;
       } catch (e) {
         if (e instanceof ApiError && (e.status === 401 || e.status === 403)) return null;
         throw e;
