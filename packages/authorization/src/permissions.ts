@@ -83,6 +83,7 @@ export const PlatformPermissions = {
   AUDIT_READ: 'platform.audit.read',
   STAFF_MANAGE: 'platform.staff.manage',
   ACCOUNTS_MFA_RESET: 'platform.accounts.mfa_reset',
+  TENANTS_LIFECYCLE: 'platform.tenants.lifecycle',
 } as const;
 
 export type PlatformPermission = (typeof PlatformPermissions)[keyof typeof PlatformPermissions];
@@ -158,4 +159,5 @@ export const PLATFORM_PERMISSION_DESCRIPTIONS: Record<PlatformPermission, string
   'platform.audit.read': 'View the platform audit log',
   'platform.staff.manage': 'Manage Qwik staff accounts',
   'platform.accounts.mfa_reset': "Reset a user's MFA after verifying their identity",
+  'platform.tenants.lifecycle': 'Approve account closure requests and place or lift legal holds',
 };

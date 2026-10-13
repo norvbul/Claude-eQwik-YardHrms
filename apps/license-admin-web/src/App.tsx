@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { Layout, RequirePlatform } from './Layout';
 import { Login, Mfa, ResetPassword } from './pages/Auth';
 import { CustomerDetail, Customers, Dashboard, PaymentDetail, Payments, Plans, Products } from './pages/Commercial';
+import { DataRequests } from './pages/DataRequests';
 import { Codes, Licences, PlatformAudit, Renewals, Settings, SubscriptionDetail, Subscriptions, Usage } from './pages/Subscriptions';
 
 export function App() {
@@ -28,6 +29,7 @@ export function App() {
           <Route path="usage" element={<Usage />} />
           <Route path="audit" element={<PlatformAudit />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="data-requests" element={<DataRequests />} />
           <Route path="*" element={<EmptyState title="Page not found" />} />
         </Route>
       </Route>

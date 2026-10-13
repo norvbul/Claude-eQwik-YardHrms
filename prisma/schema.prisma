@@ -292,6 +292,14 @@ model Tenant {
   requireSeparateApprover Boolean    @default(true) @map("require_separate_approver")
   /// First month (1-12) of the tax year used for cumulative statutory calculations (Jamaica: calendar year = 1)
   taxYearStartMonth     Int          @default(1) @map("tax_year_start_month")
+  /// Overrides of the default retention periods (validated against legal minimums)
+  retentionPolicy       Json?        @map("retention_policy")
+  /// Legal hold suspends every retention purge and deletion for the tenant
+  legalHold             Boolean      @default(false) @map("legal_hold")
+  legalHoldReason       String?      @map("legal_hold_reason") @db.VarChar(500)
+  closedAt              DateTime?    @map("closed_at")
+  /// For a CLOSED tenant: statutory records are kept until this date, then purged
+  purgeAfter            DateTime?    @map("purge_after")
   nextEmployeeSeq       Int          @default(1) @map("next_employee_seq")
   currentSubscriptionId String?      @unique @map("current_subscription_id") @db.Char(36)
   createdAt             DateTime     @default(now()) @map("created_at")
@@ -926,6 +934,8 @@ model Employee {
   createdById           String?        @map("created_by_id") @db.Char(36)
   createdAt             DateTime       @default(now()) @map("created_at")
   updatedAt             DateTime       @updatedAt @map("updated_at")
+  /// Set when personal data was removed under the retention policy (row kept for statutory history)
+  anonymisedAt          DateTime?      @map("anonymised_at")
   deletedAt             DateTime?      @map("deleted_at")
 
   tenant            Tenant                     @relation(fields: [tenantId], references: [id])
@@ -1633,6 +1643,7 @@ model BankExportBatch {
   storageKey  String   @map("storage_key") @db.VarChar(255)
   sha256      String   @db.Char(64)
   createdById String   @map("created_by_id") @db.Char(36)
+  filePurgedAt DateTime? @map("file_purged_at")
   createdAt   DateTime @default(now()) @map("created_at")
 
   run PayrollRun @relation(fields: [tenantId, runId], references: [tenantId, id], onDelete: NoAction, onUpdate: NoAction, map: "bank_exports_run_fk")
@@ -1681,6 +1692,7 @@ model ImportBatch {
   createdAt       DateTime     @default(now()) @map("created_at")
   updatedAt       DateTime     @updatedAt @map("updated_at")
   completedAt     DateTime?    @map("completed_at")
+  filePurgedAt    DateTime?    @map("file_purged_at")
 
   rows ImportRow[]
 
@@ -1804,4 +1816,70 @@ model NotificationPreference {
 
   @@id([userId, category])
   @@map("notification_preferences")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Data lifecycle (NFR-011): exports, deletion requests, retention runs
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum DataExportStatus {
+  QUEUED
+  READY
+  FAILED
+  EXPIRED
+}
+
+model DataExport {
+  id            String           @id @default(uuid()) @db.Char(36)
+  tenantId      String           @map("tenant_id") @db.Char(36)
+  requestedById String           @map("requested_by_id") @db.Char(36)
+  status        DataExportStatus @default(QUEUED)
+  storageKey    String?          @map("storage_key") @db.VarChar(255)
+  sizeBytes     Int?             @map("size_bytes")
+  sha256        String?          @db.Char(64)
+  error         String?          @db.VarChar(500)
+  expiresAt     DateTime?        @map("expires_at")
+  completedAt   DateTime?        @map("completed_at")
+  createdAt     DateTime         @default(now()) @map("created_at")
+
+  @@index([tenantId, createdAt])
+  @@map("data_exports")
+}
+
+enum DeletionRequestStatus {
+  PENDING
+  APPROVED
+  CANCELLED
+  REJECTED
+  EXECUTED
+}
+
+model DeletionRequest {
+  id              String                @id @default(uuid()) @db.Char(36)
+  tenantId        String                @map("tenant_id") @db.Char(36)
+  requestedById   String                @map("requested_by_id") @db.Char(36)
+  reason          String                @db.VarChar(1000)
+  status          DeletionRequestStatus @default(PENDING)
+  coolingOffUntil DateTime              @map("cooling_off_until")
+  decidedById     String?               @map("decided_by_id") @db.Char(36)
+  decidedAt       DateTime?             @map("decided_at")
+  decisionNote    String?               @map("decision_note") @db.VarChar(1000)
+  executedAt      DateTime?             @map("executed_at")
+  summary         Json?
+  createdAt       DateTime              @default(now()) @map("created_at")
+
+  @@index([tenantId, status])
+  @@index([status, coolingOffUntil])
+  @@map("deletion_requests")
+}
+
+model RetentionRun {
+  id         String    @id @default(uuid()) @db.Char(36)
+  tenantId   String?   @map("tenant_id") @db.Char(36)
+  startedAt  DateTime  @default(now()) @map("started_at")
+  finishedAt DateTime? @map("finished_at")
+  summary    Json?
+
+  @@index([tenantId, startedAt])
+  @@map("retention_runs")
 }

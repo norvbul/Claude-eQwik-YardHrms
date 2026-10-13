@@ -34,6 +34,7 @@ import { api } from '@/lib/api';
 import { applyServerErrors, useAction, useApi, usePaged, useZodForm } from '@/lib/hooks';
 import { useSession } from '@/lib/session';
 import { NotificationPreferences } from '@/components/notifications';
+import { DataPrivacy } from './DataPrivacy';
 
 // ── Users & roles (SEC-004/005) ─────────────────────────────────────────────
 export function UsersRoles() {
@@ -340,9 +341,10 @@ function RolesTab() {
 }
 
 // ── Company settings (CFG-001/002, HR-004/005, AC-15) ──────────────────────
-export function CompanySettings() {
-  const { can } = useSession();
-  const [tab, setTab] = useState<'profile' | 'departments' | 'branches' | 'positions' | 'employment-types' | 'shift-types' | 'public-holidays'>('profile');
+export function CompanySettings({ initialTab = 'profile' }: { initialTab?: 'profile' | 'data' }) {
+  const { can, me } = useSession();
+  const isAdmin = !!me?.activeTenant?.roles.includes('COMPANY_ADMIN');
+  const [tab, setTab] = useState<'profile' | 'data' | 'departments' | 'branches' | 'positions' | 'employment-types' | 'shift-types' | 'public-holidays'>(initialTab === 'data' && isAdmin ? 'data' : 'profile');
   return (
     <>
       <PageHeader title="Company settings" description="Company profile, branding and master data" />
@@ -357,9 +359,10 @@ export function CompanySettings() {
           { value: 'employment-types', label: 'Employment types' },
           { value: 'shift-types', label: 'Shift types' },
           { value: 'public-holidays', label: 'Public holidays' },
+          ...(isAdmin ? [{ value: 'data' as const, label: 'Data & privacy' }] : []),
         ]}
       />
-      {tab === 'profile' ? <CompanyProfile /> : <MasterData kind={tab} canWrite={can('masterdata.write')} />}
+      {tab === 'profile' ? <CompanyProfile /> : tab === 'data' ? <DataPrivacy /> : <MasterData kind={tab} canWrite={can('masterdata.write')} />}
     </>
   );
 }

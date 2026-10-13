@@ -88,3 +88,95 @@ export type NotificationCategory = (typeof NOTIFICATION_CATEGORIES)[number]['key
 export const notificationPreferencesSchema = z.object({
   email: z.record(z.string(), z.boolean()),
 });
+
+/**
+ * Retention periods (NFR-011). Defaults follow Jamaican requirements as researched on 2026-10-13 and must be
+ * confirmed by the owner's legal adviser: the Income Tax (Employments) Regulations require employers to keep
+ * records of emoluments and deductions for not less than seven years; the Data Protection Act, 2020 requires
+ * personal data not be kept longer than necessary (subject to periods prescribed by law).
+ */
+export const RETENTION_RULES = [
+  {
+    key: 'payrollRecords',
+    label: 'Payroll runs, payslips and statutory deduction records',
+    unit: 'years',
+    defaultValue: 7,
+    min: 7,
+    max: 20,
+    from: 'end of the tax year in which the pay date falls',
+    basis: 'Income Tax (Employments) Regulations (Income Tax Act, Second Schedule): records of emoluments and deductions kept for not less than seven years.',
+  },
+  {
+    key: 'employeeRecords',
+    label: 'Former employees’ personal details (anonymised afterwards; payroll history kept)',
+    unit: 'years',
+    defaultValue: 7,
+    min: 7,
+    max: 20,
+    from: 'termination date',
+    basis: 'Supports the payroll records above and the six-year limitation period for contract claims; Data Protection Act storage limitation thereafter.',
+  },
+  {
+    key: 'employeeDocuments',
+    label: 'Former employees’ uploaded documents (IDs, certificates, letters)',
+    unit: 'years',
+    defaultValue: 2,
+    min: 0,
+    max: 20,
+    from: 'termination date',
+    basis: 'Data Protection Act, 2020 storage limitation — kept only while needed for references or disputes.',
+  },
+  {
+    key: 'auditLog',
+    label: 'Audit log',
+    unit: 'years',
+    defaultValue: 7,
+    min: 7,
+    max: 20,
+    from: 'date of the event',
+    basis: 'Evidence for the payroll and personnel records it relates to.',
+  },
+  {
+    key: 'bankFiles',
+    label: 'Generated bank upload files (contain account numbers)',
+    unit: 'days',
+    defaultValue: 90,
+    min: 30,
+    max: 3650,
+    from: 'generation',
+    basis: 'Data minimisation; the payroll register remains the record of payment.',
+  },
+  {
+    key: 'importFiles',
+    label: 'Uploaded import spreadsheets and their row data',
+    unit: 'days',
+    defaultValue: 90,
+    min: 7,
+    max: 3650,
+    from: 'upload',
+    basis: 'Data minimisation; imported records themselves are kept under their own rules.',
+  },
+  {
+    key: 'notifications',
+    label: 'In-app notifications',
+    unit: 'days',
+    defaultValue: 365,
+    min: 30,
+    max: 3650,
+    from: 'creation',
+    basis: 'Operational convenience only.',
+  },
+] as const;
+export type RetentionKey = (typeof RETENTION_RULES)[number]['key'];
+export type RetentionPolicy = Record<RetentionKey, number>;
+export const defaultRetentionPolicy = (): RetentionPolicy => Object.fromEntries(RETENTION_RULES.map((r) => [r.key, r.defaultValue])) as RetentionPolicy;
+
+export const retentionPolicySchema = z
+  .object(Object.fromEntries(RETENTION_RULES.map((r) => [r.key, z.coerce.number().int().min(r.min, `${r.label}: at least ${r.min} ${r.unit}`).max(r.max)])) as unknown as Record<RetentionKey, z.ZodType<number>>)
+  .partial();
+export const legalHoldSchema = z.object({ enabled: z.boolean(), reason: z.string().trim().min(5).max(500).optional().nullable() }).refine((v) => !v.enabled || !!v.reason, { path: ['reason'], message: 'A reason is required to place a legal hold' });
+export const deletionRequestSchema = z.object({
+  reason: z.string().trim().min(10).max(1000),
+  confirmName: z.string().trim().min(1).max(190),
+});
+export const deletionDecisionSchema = z.object({ note: z.string().trim().min(5).max(1000) });

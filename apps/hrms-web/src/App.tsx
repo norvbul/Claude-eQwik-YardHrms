@@ -70,6 +70,7 @@ export function App() {
             <Route path="imports/:id" element={<ImportDetail />} />
             <Route path="users" element={<UsersRoles />} />
             <Route path="settings" element={<CompanySettings />} />
+            <Route path="settings/data" element={<CompanySettings initialTab="data" />} />
             <Route path="subscription" element={<Subscription />} />
             <Route path="audit" element={<AuditLog />} />
             <Route path="account" element={<Account />} />

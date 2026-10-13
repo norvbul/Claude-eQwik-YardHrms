@@ -1,5 +1,5 @@
 import { Button, Spinner, cn, initials } from '@yardhrms/ui';
-import { Activity, BadgeCheck, Building2, CalendarClock, CreditCard, FileKey2, Gauge, KeyRound, Layers, LogOut, Menu, Package, ScrollText, Settings, X } from 'lucide-react';
+import { Activity, BadgeCheck, Building2, CalendarClock, CreditCard, FileKey2, Gauge, KeyRound, Layers, LogOut, Menu, Package, ScrollText, Settings, X, ShieldOff } from 'lucide-react';
 import { useEffect, useState, type ComponentType } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useSession } from './lib/session';
@@ -23,6 +23,7 @@ const NAV: Item[] = [
   { to: '/renewals', label: 'Renewals / Expirations', icon: CalendarClock, perm: 'platform.subscriptions.read' },
   { to: '/usage', label: 'Usage Monitoring', icon: Activity, perm: 'platform.usage.read' },
   { to: '/audit', label: 'Platform Audit', icon: ScrollText, perm: 'platform.audit.read' },
+  { to: '/data-requests', label: 'Closures & Legal Holds', icon: ShieldOff, perm: 'platform.tenants.lifecycle' },
   { to: '/settings', label: 'Settings', icon: Settings, perm: 'platform.dashboard.read' },
 ];
 

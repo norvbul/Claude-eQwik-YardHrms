@@ -31,6 +31,7 @@
     "exceljs": "4.4.0",
     "helmet": "8.1.0",
     "ioredis": "5.8.2",
+    "jszip": "3.10.2",
     "multer": "2.0.2",
     "nodemailer": "7.0.10",
     "otplib": "12.0.1",

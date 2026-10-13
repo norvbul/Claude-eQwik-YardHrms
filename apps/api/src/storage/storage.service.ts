@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { GetObjectCommand, PutObjectCommand, S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { GetObjectCommand, PutObjectCommand, S3Client, DeleteObjectCommand, DeleteObjectsCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -96,6 +96,34 @@ export class StorageService {
       return Buffer.from(bytes);
     }
     return fs.readFile(this.resolveLocal(key));
+  }
+
+  /** Deletes every object under a prefix (retention purge of a closed tenant). Returns the count removed. */
+  async removePrefix(prefix: string): Promise<number> {
+    if (!prefix.endsWith('/') || prefix.length < 10) throw new Error('Refusing to delete an unsafe prefix');
+    if (this.s3) {
+      let removed = 0;
+      let token: string | undefined;
+      do {
+        const page = await this.s3.send(new ListObjectsV2Command({ Bucket: this.config.S3_BUCKET, Prefix: prefix, ContinuationToken: token }));
+        const keys = (page.Contents ?? []).map((o) => ({ Key: o.Key! }));
+        if (keys.length) await this.s3.send(new DeleteObjectsCommand({ Bucket: this.config.S3_BUCKET, Delete: { Objects: keys } }));
+        removed += keys.length;
+        token = page.IsTruncated ? page.NextContinuationToken : undefined;
+      } while (token);
+      return removed;
+    }
+    const dir = this.resolveLocal(prefix.slice(0, -1));
+    let count = 0;
+    const walk = async (d: string): Promise<void> => {
+      for (const e of await fs.readdir(d, { withFileTypes: true }).catch(() => [])) {
+        if (e.isDirectory()) await walk(path.join(d, e.name));
+        else count++;
+      }
+    };
+    await walk(dir);
+    await fs.rm(dir, { recursive: true, force: true });
+    return count;
   }
 
   async exists(key: string): Promise<boolean> {
