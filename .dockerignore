@@ -1,0 +1,13 @@
+**/node_modules
+**/dist
+**/coverage
+.git
+.env
+.env.*
+!.env.example
+.storage*
+test-results
+playwright-report
+dump.rdb
+docs
+tools/legacy-migration/input

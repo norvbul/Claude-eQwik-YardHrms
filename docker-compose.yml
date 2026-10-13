@@ -1,0 +1,109 @@
+# eQwik YardHRMS — full local stack: MySQL 8.4, Redis, SeaweedFS (private S3), Mailpit, API, worker and
+# both web apps. Copy infra/docker/compose.env.example to infra/docker/compose.env and set the keys first.
+#
+#   docker compose up -d --build
+#   HRMS:            http://localhost:8080
+#   Licence Manager: http://localhost:8081
+#   Mailpit inbox:   http://localhost:8025
+#   API docs:        http://localhost:8080/api/docs
+name: yardhrms
+
+x-app-env: &app-env
+  env_file: infra/docker/compose.env
+
+services:
+  mysql:
+    image: mysql:8.4.7
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci", "--default-time-zone=+00:00", "--log-bin-trust-function-creators=1"]
+    environment:
+      MYSQL_DATABASE: yardhrms
+      MYSQL_USER: yard
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-yard-local-only}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root-local-only}
+    volumes: [mysql-data:/var/lib/mysql]
+    ports: ["127.0.0.1:3306:3306"]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 20
+
+  # S3-compatible private object storage for local use (SeaweedFS). In production point S3_* at your
+  # managed S3-compatible service instead. Anonymous access is not configured, so the bucket is private.
+  s3:
+    image: chrislusf/seaweedfs:3.97
+    command: ["server", "-dir=/data", "-s3", "-s3.port=8333", "-s3.config=/etc/seaweedfs/s3.json", "-volume.max=0"]
+    volumes:
+      - s3-data:/data
+      - ./infra/docker/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9333/cluster/status || exit 1"]
+      interval: 5s
+      retries: 30
+
+  s3-init:
+    image: amazon/aws-cli:2.37.13
+    depends_on: { s3: { condition: service_healthy } }
+    environment:
+      AWS_ACCESS_KEY_ID: yard-local-s3
+      AWS_SECRET_ACCESS_KEY: yard-local-s3-secret-change-me
+      AWS_DEFAULT_REGION: us-east-1
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - for i in 1 2 3 4 5 6 7 8 9 10; do aws --endpoint-url http://s3:8333 s3api head-bucket --bucket yardhrms-private 2>/dev/null && exit 0; aws --endpoint-url http://s3:8333 s3 mb s3://yardhrms-private && exit 0; sleep 3; done; exit 1
+
+  mailpit:
+    image: axllent/mailpit:v1.31.5
+    ports: ["127.0.0.1:8025:8025"]
+
+  migrate:
+    <<: *app-env
+    build: { context: ., dockerfile: infra/docker/node.Dockerfile, target: migrate }
+    image: yardhrms/migrate:local
+    depends_on: { mysql: { condition: service_healthy } }
+    restart: "no"
+
+  api:
+    <<: *app-env
+    build: { context: ., dockerfile: infra/docker/node.Dockerfile, target: api }
+    image: yardhrms/api:local
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+      s3-init: { condition: service_completed_successfully }
+    restart: unless-stopped
+
+  worker:
+    <<: *app-env
+    build: { context: ., dockerfile: infra/docker/node.Dockerfile, target: worker }
+    image: yardhrms/worker:local
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      s3-init: { condition: service_completed_successfully }
+    restart: unless-stopped
+
+  hrms-web:
+    build: { context: ., dockerfile: infra/docker/web.Dockerfile, args: { APP: hrms-web } }
+    image: yardhrms/hrms-web:local
+    depends_on: [api]
+    ports: ["127.0.0.1:8080:8080"]
+    restart: unless-stopped
+
+  license-admin-web:
+    build: { context: ., dockerfile: infra/docker/web.Dockerfile, args: { APP: license-admin-web } }
+    image: yardhrms/license-admin-web:local
+    depends_on: [api]
+    ports: ["127.0.0.1:8081:8080"]
+    restart: unless-stopped
+
+volumes:
+  mysql-data:
+  s3-data:

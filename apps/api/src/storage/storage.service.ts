@@ -52,6 +52,10 @@ export class StorageService {
         endpoint: config.S3_ENDPOINT,
         forcePathStyle: config.S3_FORCE_PATH_STYLE,
         credentials: config.S3_ACCESS_KEY_ID ? { accessKeyId: config.S3_ACCESS_KEY_ID, secretAccessKey: config.S3_SECRET_ACCESS_KEY ?? '' } : undefined,
+        // Only send checksums when an operation requires them; many S3-compatible stores reject or
+        // mis-store the default aws-chunked uploads with trailing checksums.
+        requestChecksumCalculation: 'WHEN_REQUIRED',
+        responseChecksumValidation: 'WHEN_REQUIRED',
       });
     }
   }
@@ -77,7 +81,7 @@ export class StorageService {
 
   async put(key: string, body: Buffer, contentType: string): Promise<void> {
     if (this.s3) {
-      await this.s3.send(new PutObjectCommand({ Bucket: this.config.S3_BUCKET, Key: key, Body: body, ContentType: contentType, ServerSideEncryption: 'AES256' }));
+      await this.s3.send(new PutObjectCommand({ Bucket: this.config.S3_BUCKET, Key: key, Body: body, ContentType: contentType, ServerSideEncryption: this.config.S3_SERVER_SIDE_ENCRYPTION === 'none' ? undefined : this.config.S3_SERVER_SIDE_ENCRYPTION }));
       return;
     }
     const full = this.resolveLocal(key);

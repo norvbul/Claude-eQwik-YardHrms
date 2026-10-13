@@ -1,0 +1,9 @@
+{
+  "identities": [
+    {
+      "name": "yardhrms-local",
+      "credentials": [{ "accessKey": "yard-local-s3", "secretKey": "yard-local-s3-secret-change-me" }],
+      "actions": ["Read", "Write", "List", "Tagging", "Admin"]
+    }
+  ]
+}

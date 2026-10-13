@@ -30,6 +30,8 @@ const envSchema = z.object({
   S3_ACCESS_KEY_ID: z.string().optional(),
   S3_SECRET_ACCESS_KEY: z.string().optional(),
   S3_FORCE_PATH_STYLE: z.string().optional().transform((v) => v !== 'false'),
+  /** Request server-side encryption at rest. Use "none" only for stores that encrypt at the volume level or mishandle SSE headers. */
+  S3_SERVER_SIDE_ENCRYPTION: z.enum(['AES256', 'aws:kms', 'none']).default('AES256'),
   MAX_UPLOAD_MB: z.coerce.number().positive().default(10),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().default(1025),
