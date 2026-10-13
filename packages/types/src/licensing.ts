@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { emailSchemaLoose, isoDateField, optionalText, positiveMoney } from './shared-fields';
+import { blankable } from './common';
+import { emailSchemaLoose, isoDateField, optionalText, positiveMoney, optionalIsoDate } from './shared-fields';
 
 export const redeemCodeSchema = z.object({
   code: z
@@ -35,9 +36,9 @@ export const planSchema = z.object({
   code: z.string().trim().min(2).max(40).regex(/^[A-Z0-9_]+$/),
   name: z.string().trim().min(2).max(120),
   isFree: z.boolean().default(false),
-  price: positiveMoney.nullable().optional(),
+  price: blankable(positiveMoney),
   currency: z.string().trim().length(3).toUpperCase().default('JMD'),
-  durationMonths: z.coerce.number().int().min(1).max(120).nullable().optional(),
+  durationMonths: blankable(z.coerce.number().int().min(1).max(120)),
   employeeLimit: z.coerce.number().int().min(1).max(100000),
   userLimit: z.coerce.number().int().min(1).max(100000),
   gracePeriodDays: z.coerce.number().int().min(0).max(365),
@@ -55,8 +56,8 @@ export const paymentSchema = z
     amount: positiveMoney.refine((v) => Number(v) > 0, 'Amount must be greater than zero'),
     currency: z.string().trim().length(3).toUpperCase(),
     method: PaymentMethodEnum,
-    periodStart: isoDateField.optional().nullable(),
-    periodEnd: isoDateField.optional().nullable(),
+    periodStart: optionalIsoDate,
+    periodEnd: optionalIsoDate,
     notes: optionalText(1000),
   })
   .refine((v) => !v.periodStart || !v.periodEnd || v.periodEnd >= v.periodStart, { path: ['periodEnd'], message: 'Period end must follow start' });
@@ -71,8 +72,8 @@ export const subscriptionCreateSchema = z
     paymentId: optionalText(64),
     override: z.boolean().default(false),
     overrideReason: optionalText(500),
-    employeeLimitOverride: z.coerce.number().int().min(1).max(100000).nullable().optional(),
-    userLimitOverride: z.coerce.number().int().min(1).max(100000).nullable().optional(),
+    employeeLimitOverride: blankable(z.coerce.number().int().min(1).max(100000)),
+    userLimitOverride: blankable(z.coerce.number().int().min(1).max(100000)),
     /** Directly apply to the customer's linked tenant instead of issuing a code. */
     applyToTenantDirectly: z.boolean().default(false),
   })

@@ -1,6 +1,7 @@
 import { z } from 'zod';
+import { blankable } from './common';
 import { PayFrequencyEnum } from './hr';
-import { decimalString, isoDateField, optionalText, positiveMoney, rateFraction } from './shared-fields';
+import { decimalString, isoDateField, optionalText, positiveMoney, rateFraction, optionalIsoDate } from './shared-fields';
 
 export const PayrollRunStatusEnum = z.enum(['DRAFT', 'PREPARED', 'REVIEWED', 'APPROVED', 'LOCKED']);
 
@@ -20,7 +21,7 @@ export const deductionTypeSchema = z.object({
 });
 
 export const taxBracketSchema = z.object({
-  upToAnnual: positiveMoney.nullable(),
+  upToAnnual: blankable(positiveMoney),
   rate: rateFraction,
 });
 
@@ -31,11 +32,11 @@ export const statutoryComponentSchema = z.object({
   base: z.enum(['GROSS', 'TAXABLE_GROSS', 'STATUTORY_INCOME']),
   employeeRate: rateFraction,
   employerRate: rateFraction,
-  annualCeiling: positiveMoney.nullable().optional(),
-  annualThreshold: positiveMoney.nullable().optional(),
+  annualCeiling: blankable(positiveMoney),
+  annualThreshold: blankable(positiveMoney),
   reducesStatutoryIncome: z.boolean().default(false),
-  minAge: z.coerce.number().int().min(0).max(120).nullable().optional(),
-  maxAge: z.coerce.number().int().min(0).max(120).nullable().optional(),
+  minAge: blankable(z.coerce.number().int().min(0).max(120)),
+  maxAge: blankable(z.coerce.number().int().min(0).max(120)),
   brackets: z.array(taxBracketSchema).max(10).default([]),
   notes: optionalText(500),
 });
@@ -43,7 +44,7 @@ export const statutoryComponentSchema = z.object({
 export const statutoryVersionSchema = z.object({
   name: z.string().trim().min(3).max(120),
   effectiveFrom: isoDateField,
-  effectiveTo: isoDateField.optional().nullable(),
+  effectiveTo: optionalIsoDate,
   sourceReference: optionalText(500),
   components: z.array(statutoryComponentSchema).min(1).max(20),
 });

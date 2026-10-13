@@ -11,3 +11,10 @@ export const emailSchemaLoose = z
   .max(190)
   .refine((v) => v === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), 'Enter a valid email address')
   .transform((v) => (v === '' ? null : v));
+
+/** Optional date: accepts YYYY-MM-DD, empty string (blank form input) or null; normalizes blanks to null. */
+export const optionalIsoDate = z
+  .union([isoDateField, z.literal('')])
+  .optional()
+  .nullable()
+  .transform((v) => (v === '' ? null : v));

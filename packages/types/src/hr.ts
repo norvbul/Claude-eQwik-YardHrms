@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { decimalString, emailSchemaLoose, hhmmField, isoDateField, optionalText, positiveMoney } from './shared-fields';
+import { blankable } from './common';
+import { decimalString, emailSchemaLoose, hhmmField, isoDateField, optionalText, positiveMoney, optionalIsoDate } from './shared-fields';
 
 export const PayFrequencyEnum = z.enum(['WEEKLY', 'FORTNIGHTLY', 'MONTHLY']);
 export const PayTypeEnum = z.enum(['SALARY', 'HOURLY']);
@@ -48,7 +49,7 @@ export const departmentSchema = masterDataSchema.extend({ costCenter: optionalTe
 export const branchSchema = masterDataSchema.extend({ parish: optionalText(60), address: optionalText(255) });
 export const positionSchema = masterDataSchema.extend({ departmentId: optionalText(64) });
 export const employmentTypeSchema = masterDataSchema;
-export const shiftTypeSchema = masterDataSchema.extend({ defaultStart: hhmmField.optional().nullable(), defaultEnd: hhmmField.optional().nullable() });
+export const shiftTypeSchema = masterDataSchema.extend({ defaultStart: blankable(hhmmField), defaultEnd: blankable(hhmmField) });
 export const publicHolidaySchema = z.object({ date: isoDateField, name: z.string().trim().min(2).max(120) });
 
 const employeeBase = z.object({
@@ -60,7 +61,7 @@ const employeeBase = z.object({
   email: emailSchemaLoose.optional().nullable(),
   phone: optionalText(40),
   mobile: optionalText(40),
-  dateOfBirth: isoDateField.optional().nullable(),
+  dateOfBirth: optionalIsoDate,
   gender: GenderEnum.optional().nullable(),
   addressLine1: optionalText(190),
   addressLine2: optionalText(190),
@@ -81,13 +82,13 @@ const employeeBase = z.object({
   employmentTypeId: optionalText(64),
   supervisorId: optionalText(64),
   hireDate: isoDateField,
-  probationEndDate: isoDateField.optional().nullable(),
-  confirmationDate: isoDateField.optional().nullable(),
+  probationEndDate: optionalIsoDate,
+  confirmationDate: optionalIsoDate,
   payFrequency: PayFrequencyEnum,
   payType: PayTypeEnum,
-  salaryPerPeriod: positiveMoney.optional().nullable(),
-  hourlyRate: positiveMoney.optional().nullable(),
-  standardHoursOverride: decimalString(2).optional().nullable(),
+  salaryPerPeriod: blankable(positiveMoney),
+  hourlyRate: blankable(positiveMoney),
+  standardHoursOverride: blankable(decimalString(2)),
   overtimeEligible: z.boolean().default(false),
   statutoryExemptions: z.array(z.string().max(20)).max(20).default([]),
 });
@@ -116,9 +117,9 @@ export const compensationChangeSchema = z
     effectiveDate: isoDateField,
     payFrequency: PayFrequencyEnum,
     payType: PayTypeEnum,
-    salaryPerPeriod: positiveMoney.optional().nullable(),
-    hourlyRate: positiveMoney.optional().nullable(),
-    standardHoursOverride: decimalString(2).optional().nullable(),
+    salaryPerPeriod: blankable(positiveMoney),
+    hourlyRate: blankable(positiveMoney),
+    standardHoursOverride: blankable(decimalString(2)),
     overtimeEligible: z.boolean(),
     reason: z.string().trim().min(3).max(255),
   })
@@ -156,15 +157,15 @@ export const employeeAllowanceSchema = z.object({
   allowanceTypeId: z.string().min(1),
   amount: positiveMoney,
   startDate: isoDateField,
-  endDate: isoDateField.optional().nullable(),
+  endDate: optionalIsoDate,
 });
 export const employeeDeductionSchema = z.object({
   deductionTypeId: z.string().min(1),
   amount: positiveMoney,
   startDate: isoDateField,
-  endDate: isoDateField.optional().nullable(),
+  endDate: optionalIsoDate,
   reference: optionalText(80),
-  balance: positiveMoney.optional().nullable(),
+  balance: blankable(positiveMoney),
 });
 
 export const employeeListQuery = z.object({

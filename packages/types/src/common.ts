@@ -97,3 +97,6 @@ export const JAMAICAN_PARISHES = [
   'Clarendon',
   'St. Catherine',
 ] as const;
+
+/** Optional field that treats a blank form input ('') as null before validation. */
+export const blankable = <T extends z.ZodType>(schema: T) => z.preprocess((v) => (v === '' ? null : v), schema.nullable().optional());

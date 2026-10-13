@@ -85,7 +85,7 @@ export class StatutoryService {
   private validate(input: StatutoryVersionInput) {
     if (input.effectiveTo && input.effectiveTo < input.effectiveFrom) throw badRequest('Effective-to must be after effective-from');
     const issues = validateRuleSet(
-      input.components.map((c) => ({ ...c, annualCeiling: c.annualCeiling ?? null, annualThreshold: c.annualThreshold ?? null, brackets: c.brackets.map((b) => ({ upToAnnual: b.upToAnnual, rate: b.rate })) })),
+      input.components.map((c) => ({ ...c, annualCeiling: c.annualCeiling ?? null, annualThreshold: c.annualThreshold ?? null, brackets: c.brackets.map((b) => ({ upToAnnual: b.upToAnnual ?? null, rate: b.rate })) })),
     );
     if (issues.length) throw badRequest(`Rule version is invalid: ${issues.map((i) => `${i.code}: ${i.message}`).join('; ')}`, { issues });
   }

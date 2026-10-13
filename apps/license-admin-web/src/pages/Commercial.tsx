@@ -583,6 +583,7 @@ export function PaymentDetail() {
       title: action === 'verify' ? 'Verify payment' : action === 'reject' ? 'Reject payment' : 'Reverse payment',
       message: action === 'verify' ? 'Confirm the funds were received. Verified payments can fund an activation or a renewal exactly once.' : 'This is recorded permanently in the verification history.',
       tone: action === 'verify' ? 'primary' : 'danger',
+      confirmLabel: action === 'verify' ? 'Verify payment' : action === 'reject' ? 'Reject payment' : 'Reverse payment',
       requireReason: action === 'verify' ? undefined : 'Reason',
     });
     if (!r.ok) return;

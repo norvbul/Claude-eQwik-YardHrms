@@ -35,7 +35,10 @@
     "globals": "16.5.0",
     "prisma": "6.19.0",
     "typescript": "5.9.3",
-    "typescript-eslint": "8.46.4"
+    "typescript-eslint": "8.46.4",
+    "dotenv": "17.2.3",
+    "otplib": "12.0.1",
+    "@node-rs/argon2": "2.0.2"
   },
   "dependencies": {
     "@prisma/client": "6.19.0"
