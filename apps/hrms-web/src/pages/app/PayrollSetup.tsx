@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { allowanceTypeSchema, deductionTypeSchema, statutoryVersionSchema } from '@yardhrms/types';
 import { Alert, Badge, Button, Card, CardBody, CardHeader, Checkbox, DataTable, EmptyState, Field, Input, Modal, PageHeader, Select, StatusBadge, Tabs, Textarea, errorMessage, formatDate, formatDateTime, useConfirm, useToast } from '@yardhrms/ui';
-import { CheckCircle2, Copy, Pencil, Plus, ShieldAlert, Trash2 } from 'lucide-react';
+import { BookOpenCheck, CheckCircle2, Copy, ExternalLink, Pencil, Plus, ShieldAlert, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useFieldArray } from 'react-hook-form';
 import { FormGrid } from '@/components/common';
@@ -38,14 +38,17 @@ function StatutoryRules() {
   const q = useApi<any[]>(['statutory-versions'], '/payroll/statutory-versions');
   const [editing, setEditing] = useState<any | null>(null);
   const [approving, setApproving] = useState<any | null>(null);
+  const [importing, setImporting] = useState(false);
   const qc = useQueryClient();
   const toast = useToast();
   const confirm = useConfirm();
   return (
     <div className="space-y-5">
+      <ReferencePackModal open={importing} onClose={() => setImporting(false)} />
       <Alert tone="warning" title="Compliance guardrail (PRD §6.7)">
-        eQwik YardHRMS does not ship verified Jamaican statutory rates. Enter PAYE, NIS, NHT, Education Tax and employer contribution figures from authoritative sources (TAJ, NIS, NHT notices). A version must be approved by a
-        second authorized person with an attestation before payroll can use it. Approved versions are immutable and kept for re-running historical payroll.
+        Statutory figures must come from authoritative sources (TAJ, NIS, NHT, HEART/NSTA notices). You can start from a researched <strong>reference pack</strong>, which is imported as a DRAFT: a
+        second authorized person must verify every figure against the cited sources and approve it with an attestation before payroll can use it. Approved versions are immutable and kept for re-running
+        historical payroll. Live use also requires your payroll specialist’s sign-off.
       </Alert>
       <Card>
         <CardHeader
@@ -53,9 +56,14 @@ function StatutoryRules() {
           actions={
             can('statutory.manage') &&
             !readOnly && (
-              <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => setEditing({})}>
-                New version
-              </Button>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" icon={<BookOpenCheck className="h-4 w-4" />} onClick={() => setImporting(true)}>
+                  Import reference pack
+                </Button>
+                <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => setEditing({})}>
+                  New version
+                </Button>
+              </div>
             )
           }
         />
@@ -150,6 +158,7 @@ function ComponentTable({ components }: { components: any[] }) {
         { key: 'er', header: 'Employer', align: 'right', cell: (c: any) => pct(c.employerRate) },
         { key: 'thr', header: 'Annual threshold', align: 'right', hideOnMobile: true, cell: (c: any) => (c.annualThreshold ? Number(c.annualThreshold).toLocaleString() : '—') },
         { key: 'ceil', header: 'Annual ceiling', align: 'right', hideOnMobile: true, cell: (c: any) => (c.annualCeiling ? Number(c.annualCeiling).toLocaleString() : '—') },
+        { key: 'method', header: 'Method', hideOnMobile: true, cell: (c: any) => <Badge tone={c.calculationMethod === 'CUMULATIVE' ? 'brand' : undefined}>{(c.calculationMethod ?? 'PERIOD').toLowerCase()}</Badge> },
       ]}
     />
   );
@@ -256,6 +265,22 @@ function VersionEditor({ value, onClose }: { value: any | null; onClose: () => v
                 </Field>
                 <Field label="Min age">{(p) => <Input {...p} type="number" {...form.register(`components.${i}.minAge`)} />}</Field>
                 <Field label="Max age">{(p) => <Input {...p} type="number" {...form.register(`components.${i}.maxAge`)} />}</Field>
+                <Field label="Calculation method" hint="Cumulative recalculates on year-to-date figures and subtracts what was already deducted this tax year">
+                  {(p) => (
+                    <Select {...p} {...form.register(`components.${i}.calculationMethod`)}>
+                      <option value="PERIOD">Per period</option>
+                      <option value="CUMULATIVE">Cumulative (year to date)</option>
+                    </Select>
+                  )}
+                </Field>
+                <Field label="Bracket bounds apply to" hint="e.g. Jamaica PAYE: 30% on statutory income above J$6M → base before threshold">
+                  {(p) => (
+                    <Select {...p} {...form.register(`components.${i}.bracketBasis`)}>
+                      <option value="AFTER_THRESHOLD">Amount after threshold</option>
+                      <option value="BEFORE_THRESHOLD">Base before threshold</option>
+                    </Select>
+                  )}
+                </Field>
                 <div className="flex items-end sm:col-span-2">
                   <Checkbox label="Employee amount reduces statutory income for later components" {...form.register(`components.${i}.reducesStatutoryIncome`)} />
                 </div>
@@ -266,7 +291,7 @@ function VersionEditor({ value, onClose }: { value: any | null; onClose: () => v
           <Button
             variant="outline"
             icon={<Plus className="h-4 w-4" />}
-            onClick={() => append({ code: '', name: '', sortOrder: (fields.length + 1) * 10, base: 'GROSS', employeeRate: '0', employerRate: '0', annualCeiling: '', annualThreshold: '', reducesStatutoryIncome: false, brackets: [] })}
+            onClick={() => append({ code: '', name: '', sortOrder: (fields.length + 1) * 10, base: 'GROSS', employeeRate: '0', employerRate: '0', annualCeiling: '', annualThreshold: '', reducesStatutoryIncome: false, calculationMethod: 'PERIOD', bracketBasis: 'AFTER_THRESHOLD', brackets: [] })}
           >
             Add component
           </Button>
@@ -355,9 +380,10 @@ function ApproveModal({ version, onClose }: { version: any | null; onClose: () =
 }
 
 function PayFrequencies() {
-  const q = useApi<{ items: any[]; requireSeparateApprover: boolean }>(['payroll-settings'], '/settings/payroll');
+  const q = useApi<{ items: any[]; requireSeparateApprover: boolean; taxYearStartMonth: number }>(['payroll-settings'], '/settings/payroll');
   const [items, setItems] = useState<any[]>([]);
   const [separate, setSeparate] = useState(true);
+  const [taxYearStart, setTaxYearStart] = useState(1);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
   const qc = useQueryClient();
@@ -365,6 +391,7 @@ function PayFrequencies() {
     if (q.data) {
       setItems(q.data.items.map((i) => ({ ...i })));
       setSeparate(q.data.requireSeparateApprover);
+      setTaxYearStart(q.data.taxYearStartMonth ?? 1);
     }
   }, [q.data]);
   const set = (i: number, k: string, v: unknown) => setItems((arr) => arr.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
@@ -404,6 +431,17 @@ function PayFrequencies() {
             </tbody>
           </table>
         </div>
+        <div className="max-w-xs">
+          <Field label="Tax year starts in" hint="Used by cumulative statutory components. Jamaica: January (calendar year).">
+            {(p) => (
+              <Select {...p} value={taxYearStart} onChange={(e) => setTaxYearStart(Number(e.target.value))}>
+                {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => (
+                  <option key={m} value={i + 1}>{m}</option>
+                ))}
+              </Select>
+            )}
+          </Field>
+        </div>
         <Checkbox label="Separation of duties: the preparer/submitter cannot review or approve the same payroll, leave, timesheet or overtime" checked={separate} onChange={(e) => setSeparate(e.target.checked)} />
         <div>
           <Button
@@ -411,7 +449,7 @@ function PayFrequencies() {
             onClick={async () => {
               setBusy(true);
               try {
-                await api.put('/settings/payroll', { items: items.map(({ frequency, standardHours, workingDays, periodsPerYear, active }) => ({ frequency, standardHours, workingDays, periodsPerYear, active })), requireSeparateApprover: separate });
+                await api.put('/settings/payroll', { items: items.map(({ frequency, standardHours, workingDays, periodsPerYear, active }) => ({ frequency, standardHours, workingDays, periodsPerYear, active })), requireSeparateApprover: separate, taxYearStartMonth: taxYearStart });
                 toast.success('Payroll settings saved');
                 await qc.invalidateQueries({ queryKey: ['payroll-settings'] });
               } catch (e) {
@@ -516,5 +554,75 @@ function PayItemTypes() {
         </form>
       </Modal>
     </div>
+  );
+}
+
+function ReferencePackModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const packs = useApi<any[]>(['reference-packs'], open ? '/payroll/statutory-reference-packs' : null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const qc = useQueryClient();
+  const toast = useToast();
+  const doImport = async (key: string) => {
+    setBusy(key);
+    try {
+      await api.post('/payroll/statutory-reference-packs/import', { key });
+      toast.success('Reference pack imported as DRAFT', 'Verify every figure against the sources, then have a second person approve it.');
+      await qc.invalidateQueries({ queryKey: ['statutory-versions'] });
+      onClose();
+    } catch (e) {
+      toast.error('Import failed', errorMessage(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+  const first = packs.data?.[0];
+  return (
+    <Modal open={open} onClose={onClose} title="Import a Jamaica reference pack" size="lg" footer={<Button variant="outline" onClick={onClose}>Close</Button>}>
+      <div className="space-y-4 text-sm">
+        <Alert tone="warning" title="Researched figures — not a substitute for verification">
+          Packs contain figures researched on {first?.researchedOn ?? '—'} from TAJ, NIS, NHT and HEART/NSTA publications as reported by the sources below. They are imported as a DRAFT and are never used until a
+          second authorized person verifies and approves them.
+        </Alert>
+        <div className="space-y-2">
+          {packs.data?.map((p) => (
+            <div key={p.key} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-3">
+              <div>
+                <p className="font-medium">{p.name}</p>
+                <p className="text-xs text-slate-500">
+                  Effective {formatDate(p.effectiveFrom)} → {p.effectiveTo ? formatDate(p.effectiveTo) : 'open'} · {p.components.map((c: any) => c.code).join(' · ')}
+                </p>
+              </div>
+              <Button size="sm" loading={busy === p.key} onClick={() => doImport(p.key)}>
+                Import as draft
+              </Button>
+            </div>
+          ))}
+        </div>
+        {first && (
+          <>
+            <div>
+              <p className="mb-1 font-semibold">Before approving, confirm</p>
+              <ul className="ml-5 list-disc space-y-1 text-slate-600">
+                {first.verify.map((v: string) => (
+                  <li key={v}>{v}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="mb-1 font-semibold">Sources</p>
+              <ul className="space-y-1">
+                {first.sources.map((s: any) => (
+                  <li key={s.url}>
+                    <a className="inline-flex items-center gap-1 text-brand underline" href={s.url} target="_blank" rel="noreferrer noopener">
+                      {s.title} <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </>
+        )}
+      </div>
+    </Modal>
   );
 }

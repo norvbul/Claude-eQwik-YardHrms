@@ -200,6 +200,16 @@ enum PayrollPeriodStatus {
   CLOSED
 }
 
+enum StatutoryCalculationMethod {
+  PERIOD
+  CUMULATIVE
+}
+
+enum BracketBasis {
+  AFTER_THRESHOLD
+  BEFORE_THRESHOLD
+}
+
 enum PayrollRunType {
   REGULAR
   SUPPLEMENTAL
@@ -280,6 +290,8 @@ model Tenant {
   logoKey               String?      @map("logo_key") @db.VarChar(255)
   accentColor           String?      @map("accent_color") @db.VarChar(7)
   requireSeparateApprover Boolean    @default(true) @map("require_separate_approver")
+  /// First month (1-12) of the tax year used for cumulative statutory calculations (Jamaica: calendar year = 1)
+  taxYearStartMonth     Int          @default(1) @map("tax_year_start_month")
   nextEmployeeSeq       Int          @default(1) @map("next_employee_seq")
   currentSubscriptionId String?      @unique @map("current_subscription_id") @db.Char(36)
   createdAt             DateTime     @default(now()) @map("created_at")
@@ -1387,6 +1399,10 @@ model StatutoryComponent {
   reducesStatutoryIncome Boolean       @default(false) @map("reduces_statutory_income")
   minAge                 Int?          @map("min_age")
   maxAge                 Int?          @map("max_age")
+  /// PERIOD (each pay period alone) or CUMULATIVE (year-to-date recalculation within the tax year)
+  calculationMethod      StatutoryCalculationMethod @default(PERIOD) @map("calculation_method")
+  /// Whether bracket bounds apply to the base before or after the threshold
+  bracketBasis           BracketBasis  @default(AFTER_THRESHOLD) @map("bracket_basis")
   notes                  String?       @db.VarChar(500)
 
   version  StatutoryRuleVersion @relation(fields: [tenantId, versionId], references: [tenantId, id], onDelete: Cascade, onUpdate: NoAction, map: "statutory_components_version_fk")

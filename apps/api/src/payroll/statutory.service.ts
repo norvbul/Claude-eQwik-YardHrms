@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { validateRuleSet, type StatutoryRuleSet } from '@yardhrms/payroll-engine';
+import { JAMAICA_REFERENCE_PACKS, validateRuleSet, type StatutoryRuleSet } from '@yardhrms/payroll-engine';
 import type { StatutoryVersionInput } from '@yardhrms/types';
 import { AuditService } from '../audit/audit.service';
 import type { TenantAuth } from '../auth/auth-context';
@@ -57,9 +57,48 @@ export class StatutoryService {
         reducesStatutoryIncome: c.reducesStatutoryIncome,
         minAge: c.minAge,
         maxAge: c.maxAge,
+        calculationMethod: c.calculationMethod,
+        bracketBasis: c.bracketBasis,
         brackets: c.brackets.map((b) => ({ upToAnnual: b.upToAnnual?.toString() ?? null, rate: b.rate.toString() })),
       })),
     };
+  }
+
+  /** Researched reference packs offered for import (never used for calculation until approved). */
+  referencePacks() {
+    return JAMAICA_REFERENCE_PACKS.map((p) => ({ key: p.key, name: p.name, effectiveFrom: p.effectiveFrom, effectiveTo: p.effectiveTo, researchedOn: p.researchedOn, sources: p.sources, verify: p.verify, components: p.components }));
+  }
+
+  /** Creates a DRAFT version from a reference pack; a second authorised user must verify and approve it. */
+  async importReferencePack(auth: TenantAuth, key: string) {
+    const p = JAMAICA_REFERENCE_PACKS.find((x) => x.key === key);
+    if (!p) throw notFound('Reference pack');
+    const sourceReference = `Reference pack ${p.key} (researched ${p.researchedOn}). VERIFY against: ${p.sources.map((s) => s.title.split(' — ')[0]).join('; ')}`.slice(0, 500);
+    const v = await this.create(auth, {
+      name: p.name.slice(0, 120),
+      effectiveFrom: p.effectiveFrom,
+      effectiveTo: p.effectiveTo,
+      sourceReference,
+      components: p.components.map((c) => ({
+        code: c.code,
+        name: c.name,
+        sortOrder: c.sortOrder,
+        base: c.base,
+        employeeRate: c.employeeRate,
+        employerRate: c.employerRate,
+        annualCeiling: c.annualCeiling ?? null,
+        annualThreshold: c.annualThreshold ?? null,
+        reducesStatutoryIncome: !!c.reducesStatutoryIncome,
+        minAge: c.minAge ?? null,
+        maxAge: c.maxAge ?? null,
+        brackets: (c.brackets ?? []).map((b) => ({ upToAnnual: b.upToAnnual, rate: b.rate })),
+        calculationMethod: c.calculationMethod ?? 'PERIOD',
+        bracketBasis: c.bracketBasis ?? 'AFTER_THRESHOLD',
+        notes: c.notes.slice(0, 500),
+      })),
+    });
+    await this.audit.record({ tenantId: auth.tenantId, action: 'statutory.reference_pack_imported', entityType: 'StatutoryRuleVersion', entityId: v.id, metadata: { key: p.key } });
+    return v;
   }
 
   async list(tenantId: string) {
@@ -107,6 +146,8 @@ export class StatutoryService {
           reducesStatutoryIncome: c.reducesStatutoryIncome,
           minAge: c.minAge ?? null,
           maxAge: c.maxAge ?? null,
+          calculationMethod: c.calculationMethod ?? 'PERIOD',
+          bracketBasis: c.bracketBasis ?? 'AFTER_THRESHOLD',
           notes: c.notes ?? null,
           brackets: { create: c.brackets.map((b, i) => ({ sequence: i + 1, upToAnnual: decOrNull(b.upToAnnual), rate: new Prisma.Decimal(b.rate) })) },
         },
@@ -195,6 +236,8 @@ export class StatutoryService {
         minAge: c.minAge,
         maxAge: c.maxAge,
         brackets: c.brackets,
+        calculationMethod: c.calculationMethod,
+        bracketBasis: c.bracketBasis,
         notes: c.notes,
       })),
     });

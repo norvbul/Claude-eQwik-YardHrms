@@ -260,4 +260,51 @@ describe('Timesheets, overtime, leave and payroll', () => {
     expect(snap.regularHours.toString()).toBe('8');
     expect(snap.grossPay.toFixed(2)).toBe('8000.00');
   });
+  it('Jamaica reference pack imports as DRAFT; with PAYE set to CUMULATIVE, unused threshold carries across the tax year', async () => {
+    const t = await registerTenant(ctx);
+    await upgradeTenant(ctx, t.tenantId);
+    const payroll = await addMember(ctx, t.tenantId, ['PAYROLL_OFFICER']);
+    const finance = await addMember(ctx, t.tenantId, ['FINANCE_APPROVER']);
+    const packs = await payroll.client.get('/payroll/statutory-reference-packs');
+    expect(packs.body.data.map((p: any) => p.key)).toContain('JM-2026-04');
+    const imp = await payroll.client.post('/payroll/statutory-reference-packs/import', { key: 'JM-2026-04' });
+    expect(imp.status).toBe(201);
+    expect(imp.body.data.status).toBe('DRAFT');
+    expect(imp.body.data.sourceReference).toMatch(/VERIFY/);
+    const v = imp.body.data;
+    const body = {
+      name: v.name,
+      effectiveFrom: v.effectiveFrom,
+      effectiveTo: v.effectiveTo,
+      sourceReference: v.sourceReference,
+      components: v.components.map((c: any) => ({ ...c, calculationMethod: c.code === 'PAYE' ? 'CUMULATIVE' : c.calculationMethod, id: undefined, tenantId: undefined, versionId: undefined })),
+    };
+    expect((await payroll.client.put(`/payroll/statutory-versions/${v.id}`, body)).status).toBe(200);
+    expect((await finance.client.post(`/payroll/statutory-versions/${v.id}/approve`, { attestation: 'Checked against TAJ advisory for test purposes.' })).status).toBe(200);
+
+    const emp = await t.admin.post('/employees', employeeBody({ payFrequency: 'MONTHLY', salaryPerPeriod: '100000.00', hireDate: '2026-01-01', dateOfBirth: '1986-01-01' }));
+    expect(emp.status).toBe(201);
+    const eid = emp.body.data.id;
+    const runMonth = async (start: string, end: string) => {
+      const run = await payroll.client.post('/payroll-runs', { frequency: 'MONTHLY', periodStart: start, periodEnd: end, payDate: end });
+      expect(run.status).toBe(201);
+      expect((await payroll.client.post(`/payroll-runs/${run.body.data.id}/prepare`)).status).toBe(200);
+      const line = await ctx.prisma.payrollRunEmployee.findFirstOrThrow({ where: { runId: run.body.data.id, employeeId: eid }, include: { deductions: true } });
+      expect((await finance.client.post(`/payroll-runs/${run.body.data.id}/review`, {})).status).toBe(200);
+      expect((await finance.client.post(`/payroll-runs/${run.body.data.id}/approve`, {})).status).toBe(200);
+      return line;
+    };
+    const apr = await runMonth('2026-04-01', '2026-04-30');
+    const amt = (l: typeof apr, code: string) => l.deductions.find((d) => d.code === code)?.employeeAmount.toFixed(2);
+    expect(amt(apr, 'NIS')).toBe('3000.00');
+    expect(amt(apr, 'PAYE') ?? '0.00').toBe('0.00'); // statutory income 97,000 below the monthly threshold
+    const comp = await t.admin.post(`/employees/${eid}/compensation`, { effectiveDate: '2026-05-01', payFrequency: 'MONTHLY', payType: 'SALARY', salaryPerPeriod: '300000.00', overtimeEligible: false, reason: 'Promotion' });
+    expect(comp.status).toBe(200);
+    const may = await runMonth('2026-05-01', '2026-05-31');
+    // YTD statutory income 97,000 + 291,000 = 388,000; threshold 2 × 158,530 = 317,060 → 70,940 × 25%
+    expect(amt(may, 'PAYE')).toBe('17735.00');
+    const paye = (may.calculation as any).statutory.find((s: any) => s.code === 'PAYE');
+    expect(paye).toMatchObject({ method: 'CUMULATIVE', cumulative: { base: '388000.00', threshold: '317060.00', priorEmployee: '0.00' } });
+    expect(amt(may, 'EDTAX')).toBe('6547.50'); // period method unchanged for other components
+  });
 });

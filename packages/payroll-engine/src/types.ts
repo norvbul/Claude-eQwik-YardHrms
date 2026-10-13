@@ -13,8 +13,23 @@ export type StatutoryBase =
    */
   | 'STATUTORY_INCOME';
 
+/**
+ * PERIOD: each pay period stands alone (annual threshold/ceiling/bands divided by periods per year).
+ * CUMULATIVE: the amount due is recalculated on year-to-date figures (allowances accumulated period by
+ * period) and the amount already deducted this tax year is subtracted, so over/under-deductions from
+ * irregular pay self-correct within the year.
+ */
+export type CalculationMethod = 'PERIOD' | 'CUMULATIVE';
+
+/**
+ * AFTER_THRESHOLD: bracket bounds are measured on (base − threshold), i.e. on chargeable income.
+ * BEFORE_THRESHOLD: bracket bounds are measured on the base itself (e.g. "30% on statutory income above
+ * J$6,000,000"); the threshold is still exempt.
+ */
+export type BracketBasis = 'AFTER_THRESHOLD' | 'BEFORE_THRESHOLD';
+
 export interface TaxBracketDef {
-  /** Upper bound of the bracket in annual taxable amount after threshold; null = unbounded. */
+  /** Upper bound of the bracket (annual; see BracketBasis); null = unbounded. */
   upToAnnual: string | null;
   /** Rate as a decimal fraction, e.g. "0.25". */
   rate: string;
@@ -41,6 +56,26 @@ export interface StatutoryComponentDef {
   /** Optional eligibility by age at period end (inclusive bounds). */
   minAge?: number | null;
   maxAge?: number | null;
+  /** Default PERIOD. */
+  calculationMethod?: CalculationMethod;
+  /** Default AFTER_THRESHOLD. */
+  bracketBasis?: BracketBasis;
+}
+
+/** Year-to-date totals for one component from earlier periods of the same tax year (excluding this run). */
+export interface ComponentYtd {
+  /** Sum of the component's base in earlier periods. */
+  base: string;
+  /** Employee amount already deducted. */
+  employee: string;
+  /** Employer amount already charged. */
+  employer: string;
+  /** Sum of periodised thresholds already granted. */
+  thresholdAllowance: string;
+  /** Sum of periodised ceilings already granted; null when the component had no ceiling. */
+  ceilingAllowance: string | null;
+  /** Fraction of the tax year already elapsed (sum of 1 / periods-per-year of earlier periods). */
+  yearFraction: string;
 }
 
 export interface StatutoryRuleSet {
@@ -116,6 +151,13 @@ export interface EmployeePayInput {
   ageAtPeriodEnd?: number | null;
   /** Statutory component codes from which this employee is exempt (documented exemption). */
   statutoryExemptions?: string[];
+  /** Year-to-date figures by component code, used by CUMULATIVE components. */
+  ytd?: Record<string, ComponentYtd>;
+  /**
+   * Fraction of the tax year this period represents. Default 1 / periods-per-year. A supplemental run in
+   * a period already counted passes 0 so allowances are not granted twice.
+   */
+  periodYearFraction?: string | null;
 }
 
 export interface EarningLine {
@@ -138,6 +180,13 @@ export interface StatutoryLine {
   employerAmount: string;
   exempt: boolean;
   note?: string;
+  method: CalculationMethod;
+  /** Allowances granted for this period (stored so later periods can build year-to-date figures). */
+  periodThreshold: string;
+  periodCeiling: string | null;
+  periodYearFraction: string;
+  /** CUMULATIVE only: the year-to-date position used for this period. */
+  cumulative?: { base: string; threshold: string; ceiling: string | null; yearFraction: string; dueEmployee: string; dueEmployer: string; priorEmployee: string; priorEmployer: string };
 }
 
 export interface DeductionLine {

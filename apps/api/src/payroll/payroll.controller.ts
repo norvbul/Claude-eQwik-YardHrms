@@ -13,6 +13,7 @@ import {
   payrollTransitionSchema,
   statutoryApproveSchema,
   statutoryVersionSchema,
+  importReferencePackSchema,
 } from '@yardhrms/types';
 import { z } from 'zod';
 import { AuditService } from '../audit/audit.service';
@@ -95,6 +96,18 @@ export class PayrollSetupController {
   @AnyPermission(P.PAYROLL_READ, P.STATUTORY_MANAGE, P.STATUTORY_APPROVE)
   listVersions(@Auth() a: AuthContext) {
     return this.statutory.list(requireTenant(a).tenantId);
+  }
+
+  @Get('statutory-reference-packs')
+  @AnyPermission(P.STATUTORY_MANAGE, P.STATUTORY_APPROVE)
+  referencePacks() {
+    return this.statutory.referencePacks();
+  }
+
+  @Post('statutory-reference-packs/import')
+  @Permissions(P.STATUTORY_MANAGE)
+  importReferencePack(@Auth() a: AuthContext, @ZBody(importReferencePackSchema) body: z.infer<typeof importReferencePackSchema>) {
+    return this.statutory.importReferencePack(requireTenant(a), body.key);
   }
 
   @Get('statutory-versions/:id')

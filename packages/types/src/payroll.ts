@@ -38,8 +38,12 @@ export const statutoryComponentSchema = z.object({
   minAge: blankable(z.coerce.number().int().min(0).max(120)),
   maxAge: blankable(z.coerce.number().int().min(0).max(120)),
   brackets: z.array(taxBracketSchema).max(10).default([]),
+  calculationMethod: z.enum(['PERIOD', 'CUMULATIVE']).default('PERIOD'),
+  bracketBasis: z.enum(['AFTER_THRESHOLD', 'BEFORE_THRESHOLD']).default('AFTER_THRESHOLD'),
   notes: optionalText(500),
 });
+
+export const importReferencePackSchema = z.object({ key: z.string().trim().min(3).max(40) });
 
 export const statutoryVersionSchema = z.object({
   name: z.string().trim().min(3).max(120),
@@ -98,4 +102,5 @@ export const payFrequencySettingsSchema = z.object({
     .min(1)
     .max(3),
   requireSeparateApprover: z.boolean().default(true),
+  taxYearStartMonth: z.coerce.number().int().min(1).max(12).default(1),
 });

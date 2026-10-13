@@ -8,6 +8,8 @@ import {
   workingDaysBetween,
   type EmployeePayInput,
   type PayResult,
+  type ComponentYtd,
+  PERIODS_PER_YEAR,
 } from '@yardhrms/payroll-engine';
 import type { PayrollRunCreateInput } from '@yardhrms/types';
 import { AuditService } from '../audit/audit.service';
@@ -21,6 +23,16 @@ import { PrismaService, Tx } from '../prisma/prisma.service';
 import { StatutoryService } from './statutory.service';
 
 const D = Prisma.Decimal;
+
+/** Start of the tax year containing `payDate` (tax year begins on the 1st of `startMonth`). */
+export function taxYearStart(payDate: Date, startMonth: number): Date {
+  const y = payDate.getUTCFullYear();
+  const m = payDate.getUTCMonth() + 1;
+  return new Date(Date.UTC(m >= startMonth ? y : y - 1, startMonth - 1, 1));
+}
+
+type YtdLine = { code: string; base: string; employeeAmount: string; employerAmount: string; periodThreshold?: string; periodCeiling?: string | null; periodYearFraction?: string };
+
 const EDITABLE: PayrollRun['status'][] = ['DRAFT', 'PREPARED', 'REVIEWED'];
 
 export interface RunException {
@@ -120,6 +132,64 @@ export class PayrollService {
     return this.presentRun(await this.getRun(auth.tenantId, run.id));
   }
 
+  /**
+   * Year-to-date statutory figures per employee and component from APPROVED/LOCKED runs paid earlier in
+   * the same tax year (this run excluded). Reversal runs subtract what they reverse. Runs calculated before
+   * cumulative support, and migrated legacy runs, fall back to the current version's periodised allowances.
+   */
+  private async buildYtd(
+    tx: Tx,
+    tenantId: string,
+    run: PayrollRun & { period: { payDate: Date } },
+    employeeIds: string[],
+    rules: { components: { code: string; annualThreshold?: string | null; annualCeiling?: string | null; calculationMethod?: string }[] },
+  ): Promise<Map<string, Record<string, ComponentYtd>>> {
+    const out = new Map<string, Record<string, ComponentYtd>>();
+    const cumulative = rules.components.filter((c) => c.calculationMethod === 'CUMULATIVE');
+    if (!cumulative.length || !employeeIds.length) return out;
+    const tenant = await tx.tenant.findUniqueOrThrow({ where: { id: tenantId }, select: { taxYearStartMonth: true } });
+    const start = taxYearStart(run.period.payDate, tenant.taxYearStartMonth);
+    const rows = await tx.payrollRunEmployee.findMany({
+      where: {
+        tenantId,
+        employeeId: { in: employeeIds },
+        runId: { not: run.id },
+        run: { status: { in: ['APPROVED', 'LOCKED'] }, period: { payDate: { gte: start, lte: run.period.payDate } } },
+      },
+      include: { deductions: true, run: { select: { runType: true, frequency: true } } },
+    });
+    for (const r of rows) {
+      const calc = (r.calculation ?? {}) as Record<string, any>;
+      const sign = calc.reversalOf ? -1 : 1;
+      const res = (calc.reversalOf ? calc.original : calc) as Record<string, any>;
+      const ppy = PERIODS_PER_YEAR[r.run.frequency];
+      const fallbackFraction = r.run.runType === 'SUPPLEMENTAL' ? 0 : 1 / ppy;
+      const lines: YtdLine[] = Array.isArray(res?.statutory)
+        ? res.statutory
+        : r.deductions.filter((d) => d.statutory).map((d) => ({ code: d.code, base: (d.base ?? r.grossPay).toString(), employeeAmount: d.employeeAmount.toString(), employerAmount: d.employerAmount.toString() }));
+      const ytd = out.get(r.employeeId) ?? {};
+      for (const c of cumulative) {
+        const l = lines.find((x) => x.code === c.code);
+        if (!l) continue;
+        const fraction = l.periodYearFraction != null ? Number(l.periodYearFraction) : fallbackFraction;
+        const thr = l.periodThreshold != null ? new D(l.periodThreshold) : new D(c.annualThreshold || 0).times(fraction);
+        const ceil = l.periodCeiling !== undefined ? (l.periodCeiling === null ? null : new D(l.periodCeiling)) : c.annualCeiling ? new D(c.annualCeiling).times(fraction) : null;
+        const y = ytd[c.code] ?? { base: '0', employee: '0', employer: '0', thresholdAllowance: '0', ceilingAllowance: null, yearFraction: '0' };
+        const add = (a: string, b: Prisma.Decimal.Value) => new D(a).plus(new D(b).times(sign)).toString();
+        ytd[c.code] = {
+          base: add(y.base, l.base),
+          employee: add(y.employee, l.employeeAmount),
+          employer: add(y.employer, l.employerAmount),
+          thresholdAllowance: add(y.thresholdAllowance, thr),
+          ceilingAllowance: ceil ? add(y.ceilingAllowance ?? '0', ceil) : y.ceilingAllowance,
+          yearFraction: add(y.yearFraction, fraction),
+        };
+      }
+      out.set(r.employeeId, ytd);
+    }
+    return out;
+  }
+
   private async eligibleEmployees(tx: Tx, run: PayrollRun & { period: { periodStart: Date; periodEnd: Date } }) {
     const filter = (run.employeeFilter as string[] | null) ?? null;
     const adjustmentEmployees =
@@ -169,6 +239,7 @@ export class PayrollService {
         // Clear previous calculation (allowed only while not approved; DB trigger enforces this too)
         await tx.payrollRunEmployee.deleteMany({ where: { runId: run.id } });
 
+        const ytdByEmployee = await this.buildYtd(tx, auth.tenantId, run, employees.map((e) => e.id), rules);
         const results: { employee: (typeof employees)[number]; input: EmployeePayInput; res: PayResult; regularHours: string; overtimeHours: string }[] = [];
         const exceptions: RunException[] = [];
         for (const e of employees) {
@@ -241,6 +312,9 @@ export class PayrollService {
               ].filter((d) => Number(d.amount) > 0),
               ageAtPeriodEnd: e.dateOfBirth ? ageOn(isoDay(e.dateOfBirth)!, pEnd) : null,
               statutoryExemptions: (e.statutoryExemptions as string[] | null) ?? [],
+              ytd: ytdByEmployee.get(e.id),
+              // A supplemental run pays extra in an already-counted period: no additional allowances.
+              periodYearFraction: supplemental ? '0' : null,
             };
             if (!supplemental && e.payType === 'SALARY' && !e.salaryPerPeriod) throw new Error('Salary per period is not set');
             if (!supplemental && e.payType === 'HOURLY' && !e.hourlyRate) throw new Error('Hourly rate is not set');

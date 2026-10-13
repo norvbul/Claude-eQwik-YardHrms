@@ -68,13 +68,28 @@ export function validateRuleSet(components: StatutoryComponentDef[]): RuleValida
   return issues;
 }
 
-function progressive(amountPerPeriod: Dec, brackets: NonNullable<StatutoryComponentDef['brackets']>, ppy: number): Dec {
-  let remaining = amountPerPeriod;
-  let lower = ZERO;
+/** Progressive tax with bands scaled to `yearFraction` of the annual bounds. */
+function progressive(base: Dec, threshold: Dec, c: StatutoryComponentDef, yearFraction: Dec): Dec {
+  const brackets = c.brackets ?? [];
   let tax = ZERO;
+  if ((c.bracketBasis ?? 'AFTER_THRESHOLD') === 'BEFORE_THRESHOLD') {
+    // Bands are bounds on the base itself; only the part of each band above the threshold is taxed.
+    let lower = ZERO;
+    for (const b of brackets) {
+      const upper = b.upToAnnual === null ? null : dec(b.upToAnnual).times(yearFraction);
+      const top = upper === null ? base : min(base, upper);
+      const bottom = max(lower, threshold);
+      if (top.greaterThan(bottom)) tax = tax.plus(top.minus(bottom).times(dec(b.rate)));
+      if (upper === null) break;
+      lower = upper;
+    }
+    return tax;
+  }
+  let remaining = max(ZERO, base.minus(threshold));
+  let lower = ZERO;
   for (const b of brackets) {
     if (remaining.lessThanOrEqualTo(0)) break;
-    const upper = b.upToAnnual === null ? null : dec(b.upToAnnual).dividedBy(ppy);
+    const upper = b.upToAnnual === null ? null : dec(b.upToAnnual).times(yearFraction);
     const width = upper === null ? remaining : max(ZERO, upper.minus(lower));
     const slice = min(remaining, width);
     tax = tax.plus(slice.times(dec(b.rate)));
@@ -218,6 +233,7 @@ export function calculatePay(input: EmployeePayInput, rules: StatutoryRuleSet, o
   const statutory: StatutoryLine[] = [];
   const exemptions = new Set(input.statutoryExemptions ?? []);
   const comps = [...rules.components].sort((a, b) => a.sortOrder - b.sortOrder);
+  const periodFraction = input.periodYearFraction != null && input.periodYearFraction !== '' ? dec(input.periodYearFraction) : new D(1).dividedBy(ppy);
   for (const c of comps) {
     const baseRaw = c.base === 'GROSS' ? gross : c.base === 'TAXABLE_GROSS' ? taxableGross : statutoryIncome;
     const base = max(ZERO, baseRaw);
@@ -228,15 +244,59 @@ export function calculatePay(input: EmployeePayInput, rules: StatutoryRuleSet, o
       exempt = true;
       note = 'Outside age eligibility';
     }
-    const ceiling = c.annualCeiling != null && c.annualCeiling !== '' ? dec(c.annualCeiling).dividedBy(ppy) : null;
-    const cappedBase = ceiling ? min(base, ceiling) : base;
-    const threshold = c.annualThreshold != null && c.annualThreshold !== '' ? dec(c.annualThreshold).dividedBy(ppy) : ZERO;
-    const afterThreshold = max(ZERO, cappedBase.minus(threshold));
+    const method = c.calculationMethod ?? 'PERIOD';
+    const hasCeiling = c.annualCeiling != null && c.annualCeiling !== '';
+    const periodCeiling = hasCeiling ? dec(c.annualCeiling!).times(periodFraction) : null;
+    const periodThreshold = c.annualThreshold != null && c.annualThreshold !== '' ? dec(c.annualThreshold).times(periodFraction) : ZERO;
+    const due = (b: Dec, ceiling: Dec | null, threshold: Dec, fraction: Dec) => {
+      const capped = ceiling ? min(b, ceiling) : b;
+      const after = max(ZERO, capped.minus(threshold));
+      const ee = c.brackets && c.brackets.length > 0 ? progressive(capped, threshold, c, fraction) : after.times(dec(c.employeeRate));
+      return { capped, after, ee, er: after.times(dec(c.employerRate)) };
+    };
     let employee = ZERO;
     let employer = ZERO;
-    if (!exempt) {
-      employee = c.brackets && c.brackets.length > 0 ? progressive(afterThreshold, c.brackets, ppy) : afterThreshold.times(dec(c.employeeRate));
-      employer = afterThreshold.times(dec(c.employerRate));
+    let cappedBase: Dec;
+    let afterThreshold: Dec;
+    let cumulative: StatutoryLine['cumulative'];
+    if (method === 'CUMULATIVE') {
+      const y = input.ytd?.[c.code];
+      const priorEe = dec(y?.employee ?? '0');
+      const priorEr = dec(y?.employer ?? '0');
+      const cumBase = dec(y?.base ?? '0').plus(base);
+      const cumThreshold = dec(y?.thresholdAllowance ?? '0').plus(periodThreshold);
+      const cumCeiling = periodCeiling ? dec(y?.ceilingAllowance ?? '0').plus(periodCeiling) : null;
+      const cumFraction = dec(y?.yearFraction ?? '0').plus(periodFraction);
+      const r = due(cumBase, cumCeiling, cumThreshold, cumFraction);
+      cappedBase = cumCeiling ? max(ZERO, min(base, cumCeiling.minus(min(dec(y?.base ?? '0'), cumCeiling)))) : base;
+      afterThreshold = r.after;
+      if (!exempt) {
+        employee = roundMoney(r.ee).minus(priorEe);
+        employer = roundMoney(r.er).minus(priorEr);
+        if (employee.isNegative()) {
+          warnings.push(`${c.code}: year-to-date deductions exceed the amount due by ${money(employee.negated())}; nothing is deducted this period and the difference is absorbed by later periods or the annual return.`);
+          employee = ZERO;
+        }
+        if (employer.isNegative()) employer = ZERO;
+      }
+      cumulative = {
+        base: money(cumBase),
+        threshold: money(cumThreshold),
+        ceiling: cumCeiling ? money(cumCeiling) : null,
+        yearFraction: cumFraction.toDecimalPlaces(8).toString(),
+        dueEmployee: money(r.ee),
+        dueEmployer: money(r.er),
+        priorEmployee: money(priorEe),
+        priorEmployer: money(priorEr),
+      };
+    } else {
+      const r = due(base, periodCeiling, periodThreshold, periodFraction);
+      cappedBase = r.capped;
+      afterThreshold = r.after;
+      if (!exempt) {
+        employee = r.ee;
+        employer = r.er;
+      }
     }
     const empR = roundMoney(employee);
     const erR = roundMoney(employer);
@@ -250,6 +310,11 @@ export function calculatePay(input: EmployeePayInput, rules: StatutoryRuleSet, o
       employerAmount: erR.toFixed(2),
       exempt,
       note,
+      method,
+      periodThreshold: periodThreshold.toDecimalPlaces(4).toString(),
+      periodCeiling: periodCeiling ? periodCeiling.toDecimalPlaces(4).toString() : null,
+      periodYearFraction: periodFraction.toDecimalPlaces(8).toString(),
+      cumulative,
     });
     if (c.reducesStatutoryIncome) statutoryIncome = max(ZERO, statutoryIncome.minus(empR));
   }

@@ -99,9 +99,9 @@ export class CompanyController {
     const auth = requireTenant(a);
     const [items, tenant] = await Promise.all([
       this.prisma.payFrequencyConfig.findMany({ where: { tenantId: auth.tenantId }, orderBy: { periodsPerYear: 'desc' } }),
-      this.prisma.tenant.findUniqueOrThrow({ where: { id: auth.tenantId }, select: { requireSeparateApprover: true } }),
+      this.prisma.tenant.findUniqueOrThrow({ where: { id: auth.tenantId }, select: { requireSeparateApprover: true, taxYearStartMonth: true } }),
     ]);
-    return { items, requireSeparateApprover: tenant.requireSeparateApprover };
+    return { items, requireSeparateApprover: tenant.requireSeparateApprover, taxYearStartMonth: tenant.taxYearStartMonth };
   }
 
   /** CFG-003/CFG-005: standard hours (incl. Monthly 173.33 default) are configuration, applied prospectively. */
@@ -118,7 +118,7 @@ export class CompanyController {
           update: { standardHours: new Prisma.Decimal(item.standardHours), workingDays: new Prisma.Decimal(item.workingDays), periodsPerYear: item.periodsPerYear, active: item.active },
         });
       }
-      await tx.tenant.update({ where: { id: auth.tenantId }, data: { requireSeparateApprover: body.requireSeparateApprover } });
+      await tx.tenant.update({ where: { id: auth.tenantId }, data: { requireSeparateApprover: body.requireSeparateApprover, taxYearStartMonth: body.taxYearStartMonth } });
       await this.audit.record({ tenantId: auth.tenantId, action: 'settings.payroll_updated', entityType: 'PayFrequencyConfig', before, after: body }, tx);
     });
     return this.payrollSettings(a);
