@@ -72,10 +72,11 @@ salary per pay period (salaried) or hourly rate (hourly). Monthly employees must
 
 Read the [payroll configuration & calculation policy](PAYROLL_CALCULATION_POLICY.md) first.
 
-1. **Payroll setup**: pay frequencies (standard hours, working days), overtime rules, allowance and
-   deduction types, and **statutory rules**. The statutory template starts with zero rates — enter the
-   current authoritative values, then a *different* authorised user approves the version with an
-   attestation. Payroll cannot be prepared without an approved, effective version.
+1. **Payroll setup**: pay frequencies (standard hours, working days), tax-year start, overtime rules,
+   allowance and deduction types, and **statutory rules**. Use *Import reference pack* to start from the
+   researched Jamaica figures (imported as a draft), or enter values yourself. A *different* authorised
+   user verifies every figure against the cited sources and approves the version with an attestation.
+   Payroll cannot be prepared without an approved, effective version.
 2. **Create a run**: frequency, period start/end, pay date, optionally a department.
 3. **Calculate & prepare** (Payroll Officer). Review exceptions and warnings; fix data (e.g. approve
    outstanding timesheets) and recalculate as often as needed while the run is Draft/Prepared.
@@ -152,3 +153,40 @@ only organisation is this company, after verifying their identity out of band (i
 to a known number) and recording how. The person is signed out everywhere, notified by email and must
 enrol a new authenticator at next sign-in. Administrators cannot reset their own MFA; if you are the only
 administrator, or the person also belongs to another organisation, contact Qwik support.
+
+## 12. Notifications
+
+The bell in the header lists everything that needs your attention: leave, timesheets and overtime waiting
+for your approval, decisions on requests you submitted, payroll runs ready for review or approval, new
+payslips and (for administrators) subscription renewal reminders 30, 14, 7 and 1 day(s) before expiry.
+Each also arrives by email; turn off the categories you do not want under *Account & security →
+Notifications* (subscription notices to administrators cannot be turned off). Payslips are never attached
+to emails.
+
+## 13. Data & privacy (Company Administrators)
+
+*Company Settings → Data & privacy*:
+
+- **Retention** — how long records are kept before automatic deletion or anonymisation. Payroll records,
+  former employees' details and the audit log are kept at least seven years (Income Tax (Employments)
+  Regulations); you can lengthen but not shorten these. Former employees are anonymised (name replaced,
+  identifiers and contact details removed) while their payroll history is kept.
+- **Export all data** — a ZIP with every record as CSV plus payslip PDFs, ready within minutes and
+  available for seven days. It contains TRN/NIS/NHT and bank numbers: store it securely.
+- **Close account** — type the company name to confirm. Nothing happens for 30 days (any administrator can
+  cancel); Qwik then confirms the closure. Access ends, data not required by law is erased, and payroll
+  records are kept inaccessible until their retention period ends, then deleted.
+
+## 14. Sign in with Google or Microsoft
+
+If your administrator's provider is enabled, use *Continue with Google/Microsoft* on the sign-in page.
+Your account must already exist (registered or invited — an invitation is accepted by signing in this
+way). Google accounts are matched by verified email. For Microsoft work accounts you may need to link
+first: sign in with your password, then *Account & security → Single sign-on → Link Microsoft*. Two-step
+verification is still required for administrator, payroll and finance roles.
+
+## 15. Billing documents
+
+*Subscription → Billing documents* lists invoices and receipts from Qwik Business Solutions and gives a
+statement for the year. Pay by bank transfer, cash or cheque quoting the invoice number; once Qwik
+verifies the payment the invoice shows as paid and a receipt becomes available.

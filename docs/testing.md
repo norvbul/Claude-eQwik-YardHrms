@@ -29,6 +29,11 @@ CI (`.github/workflows/ci.yml`) runs all of the above plus Docker image builds.
 | AC-14 | `licensing` — renewal with a newly verified payment, linked once, no new code |
 | AC-15 | `auth-tenancy` — company rename propagates to session branding and exports |
 
+Additional coverage: reference-pack import and cumulative PAYE end-to-end; notification routing,
+preferences and reminder de-duplication; retention purge, legal hold, trigger bypass scoping and account
+closure; invoice numbering, payment matching, receipts and statements; SSO (PKCE, state, nonce, issuer,
+verified-email rules, Microsoft linking, invitation acceptance).
+
 Additional security coverage: CSRF/session-bound token, unverified login refusal and non-enumeration,
 login lock-out/rate limiting, MFA enforcement for privileged roles, MFA reset rules (tenant scope,
 platform permission, session revocation, audit), field encryption tamper detection, audit redaction,
@@ -51,8 +56,8 @@ upload magic-number sniffing, CSV formula-injection protection.
 |---|---|
 | Lint | 0 errors, 0 warnings |
 | Typecheck | all workspaces pass |
-| Unit | 59 tests pass (engine 15, authorization 9, types 8, UI 6, API 6, HRMS web 6, Licence Manager web 3, migration 6) |
-| Integration (MySQL 8.0 locally; CI uses 8.4) | 34 / 34 pass |
+| Unit | 73 tests pass (engine 26 incl. hand-calculated Jamaica pack and cumulative cases, authorization 9, types 8, UI 6, API 6, HRMS web 9, Licence Manager web 3, migration 6) |
+| Integration (MySQL 8.0 locally; CI uses 8.4) | 47 / 47 pass (adds reference pack + cumulative PAYE, notifications, data lifecycle, billing, SSO with a mock OpenID provider) |
 | E2E (Chromium) | 3 / 3 journeys pass |
 | Docker | all five images build; the compose stack starts healthy; browser smoke test (registration → email via Mailpit → MFA → S3 logo upload/download) passes |
 | Legacy migration | transform → load → re-load (idempotent) → reconcile: 26 / 26 checks pass on the synthetic sample |

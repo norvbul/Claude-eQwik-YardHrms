@@ -90,6 +90,8 @@ config). Keep secrets in the platform's **secrets manager**, never in images, co
 | `WORKER_ID`, `WORKER_POLL_MS` | Per worker replica |
 | `SEED_PLATFORM_ADMIN_EMAIL` / `_PASSWORD` | First deployment only, then remove |
 | `SEED_DEMO_TENANT` | `false` (the seed refuses demo data in production) |
+| `BILLING_SELLER_*`, `BILLING_GCT_*`, `BILLING_PAYMENT_INSTRUCTIONS`, `BILLING_INVOICE_DUE_DAYS` | Qwik's legal name, address, TRN, GCT registration/rate and bank payment instructions printed on invoices, receipts and statements |
+| `OIDC_GOOGLE_CLIENT_ID/SECRET`, `OIDC_MICROSOFT_CLIENT_ID/SECRET`, `OIDC_MICROSOFT_TENANT` | Optional SSO. Register redirect URI `https://app.<domain>/api/v1/auth/sso/<google|microsoft>/callback`; for Microsoft add the optional `xms_edov` ID-token claim to allow automatic linking |
 
 Generate keys with `openssl rand -base64 32`.
 
@@ -118,6 +120,9 @@ forward fix — never edit the payroll/audit tables by hand (triggers prevent it
 ## 7. Observability
 
 - API and worker log to stdout (Nest logger) — ship to a central log store with retention.
+- The worker runs daily jobs: leave accruals, subscription sweep and renewal reminders, **retention**
+  (`retention.daily`: purges, anonymisation, executing approved closures) and notification delivery.
+  Check `retention_runs` and the `retention.*` audit events after the first runs.
 - Alert on: health check failures, 5xx rate, failed jobs (`background_jobs.status='FAILED'`), outbound
   email failures (`outbound_emails.status='FAILED'`), `system_errors` growth, database CPU/storage,
   replication lag, certificate expiry.

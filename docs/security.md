@@ -35,6 +35,12 @@ vulnerabilities privately to Qwik Business Solutions; do not open public issues.
   their own (never themselves or Qwik staff); anything else needs a Qwik Super Admin
   (`platform.accounts.mfa_reset`). Both paths are audited.
 
+- Single sign-on (Google, Microsoft): OpenID Connect authorization code flow with PKCE (S256), state and
+  nonce in an encrypted 10-minute cookie, ID-token signature (provider JWKS), issuer, audience and expiry
+  checks. SSO signs in existing users only; Google links by `email_verified` email, Microsoft only with the
+  verified-domain claim `xms_edov` (otherwise explicit linking from a signed-in session) to avoid the known
+  unverified-email account-takeover pattern. MFA is still required for privileged roles.
+
 ## Request protection
 
 - CSRF: every state-changing request needs the session-bound `X-CSRF-Token` header and an allowed
@@ -76,6 +82,14 @@ vulnerabilities privately to Qwik Business Solutions; do not open public issues.
 - Payroll immutability: triggers reject updates/deletes of approved or locked runs and their lines.
 - Payslip access (view, download, print) is logged per user/employee/tenant.
 
+## Data lifecycle
+
+Retention purges and account closures run in the worker. Statutory records are deleted only after their
+retention period, inside a transaction that sets the `@yardhrms_retention_purge` session flag the
+immutability triggers recognise; the flag is cleared before the transaction ends (tests prove later
+deletes are refused again). Legal holds stop every purge. Data exports are private, audited and expire
+after seven days.
+
 ## Operator responsibilities
 
 TLS and HSTS, encryption at rest for database/bucket/backups, secrets management and key backup,
@@ -85,5 +99,4 @@ major changes, incident response and breach notification under Jamaican data-pro
 
 ## Known security gaps (release 1)
 
-See [known limitations](known-limitations.md): no malware scanning, no SSO, no automated
-data-retention/deletion workflow, no independent penetration test yet.
+See [known limitations](known-limitations.md): no malware scanning and no independent penetration test yet.

@@ -6,6 +6,7 @@ import { PublicLayout } from '@/layouts/PublicLayout';
 import { AcceptInvite, ForgotPassword, Login, Register, ResetPassword, VerifyEmail } from '@/pages/public/Auth';
 import { Landing } from '@/pages/public/Landing';
 import { About, Copyright, Disclaimer, Licence, Privacy, Terms } from '@/pages/public/Legal';
+import { SsoComplete } from '@/components/sso';
 import { MfaChallenge, MfaSetup, SelectOrganization } from '@/pages/public/Mfa';
 import { Dashboard } from '@/pages/app/Dashboard';
 
@@ -46,6 +47,7 @@ export function App() {
           <Route path="privacy" element={<Privacy />} />
         </Route>
         <Route path="login" element={<Login />} />
+        <Route path="sso/complete" element={<SsoComplete />} />
         <Route path="register" element={<Register />} />
         <Route path="verify-email" element={<VerifyEmail />} />
         <Route path="forgot-password" element={<ForgotPassword />} />

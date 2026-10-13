@@ -345,6 +345,7 @@ model User {
   tokens      EmailToken[]
   notifications           Notification[]
   notificationPreferences NotificationPreference[]
+  identities              UserIdentity[]
 
   @@map("users")
 }
@@ -1948,4 +1949,23 @@ model Receipt {
   payment ManualPayment @relation(fields: [paymentId], references: [id])
 
   @@map("receipts")
+}
+
+/** External sign-in identities (Google / Microsoft OpenID Connect) linked to a user account. */
+model UserIdentity {
+  id         String    @id @default(uuid()) @db.Char(36)
+  userId     String    @map("user_id") @db.Char(36)
+  /// google | microsoft
+  provider   String    @db.VarChar(20)
+  /// Stable subject from the identity provider (Microsoft: tid:oid)
+  subject    String    @db.VarChar(190)
+  email      String    @db.VarChar(190)
+  createdAt  DateTime  @default(now()) @map("created_at")
+  lastUsedAt DateTime? @map("last_used_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, subject])
+  @@index([userId])
+  @@map("user_identities")
 }

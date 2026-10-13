@@ -39,6 +39,15 @@ const envSchema = z.object({
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().default('eQwik YardHRMS <no-reply@example.com>'),
   PAYROLL_COMPLIANCE_CERTIFIED: bool,
+  // Single sign-on (OpenID Connect). A provider is offered only when its client id and secret are set.
+  OIDC_GOOGLE_CLIENT_ID: z.string().optional(),
+  OIDC_GOOGLE_CLIENT_SECRET: z.string().optional(),
+  OIDC_GOOGLE_ISSUER: z.string().default('https://accounts.google.com'),
+  OIDC_MICROSOFT_CLIENT_ID: z.string().optional(),
+  OIDC_MICROSOFT_CLIENT_SECRET: z.string().optional(),
+  /** 'organizations' (work/school accounts, any tenant), 'common', or a specific directory id */
+  OIDC_MICROSOFT_TENANT: z.string().default('organizations'),
+  OIDC_MICROSOFT_ISSUER: z.string().optional(),
   // Billing documents (seller = Qwik Business Solutions). GCT applies only if Qwik is GCT-registered.
   BILLING_SELLER_NAME: z.string().default('Qwik Business Solutions'),
   BILLING_SELLER_ADDRESS: z.string().default('Kingston, Jamaica'),

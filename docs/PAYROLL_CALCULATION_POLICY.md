@@ -4,10 +4,10 @@ This document is the reference for how eQwik YardHRMS calculates pay, and how a 
 rules it calculates with. It is written for payroll officers, finance approvers and the qualified
 Jamaican payroll specialist who must sign off the rules before live use.
 
-> **Compliance gate.** The software ships **no statutory rates, thresholds or ceilings**. PAYE, NIS, NHT,
-> Education Tax and HEART/NSTA values must be entered by each company from authoritative, current
-> sources (legislation, Tax Administration Jamaica / NIS / NHT / HEART notices) and approved inside the
-> application. Until a qualified Jamaican payroll specialist has reviewed the rules **and** a signed set
+> **Compliance gate.** No statutory figure is used until a company approves it. Researched Jamaica
+> **reference packs** (§2a) can be imported as DRAFT rule versions; every figure must be verified against
+> current Tax Administration Jamaica, NIS, NHT and HEART/NSTA publications and approved by a second
+> authorised person inside the application. Until a qualified Jamaican payroll specialist has reviewed the rules **and** a signed set
 > of reference calculations matches the system output, the platform operator keeps
 > `PAYROLL_COMPLIANCE_CERTIFIED=false`, and every payslip and run carries a *Not certified for live
 > payroll* banner. Demo tenants use rules labelled *DEMO ONLY — synthetic rates (NOT statutory)*.
@@ -45,11 +45,31 @@ recalculated, so historical results remain reproducible after configuration chan
 5. **Retire** — allowed only when no in-progress run uses the version. Approved versions are never
    edited; to change figures, clone and approve a new version.
 
+## 2a. Jamaica reference packs (researched 13 October 2026)
+
+| Component | Employee | Employer | Base | Limits |
+|---|---|---|---|---|
+| NIS | 3% | 3% | Gross emoluments | Insurable wages up to J$5,000,000 a year (since 1 Apr 2022); ages 18 to under 70; reduces statutory income |
+| NHT | 2% | 3% | Gross emoluments | No ceiling; ages 18 to under 65 |
+| Education Tax | 2.25% | 3.5% | Statutory income (gross − employee NIS − approved pension) | Ages 18 to under 65 |
+| PAYE | 25% / 30% | — | Statutory income | Annual threshold J$1,700,088 (from 1 Apr 2024), J$1,799,376 (1 Apr 2025), J$1,902,360 (1 Apr 2026); 30% on statutory income above J$6,000,000 a year |
+| HEART/NSTA | — | 3% | Gross emoluments | Employer-level payroll threshold applies |
+
+Sources and the full verification checklist are shown in the import dialog and stored in each version's
+source reference. Thresholds change on 1 April (Jamaica's fiscal year) while tax is assessed on the
+calendar year: import one pack per effective date so each pay period uses the threshold in force.
+Hand-calculated examples (e.g. monthly J$300,000 at age 40 → NIS 9,000; NHT 6,000; Education Tax 6,547.50;
+PAYE 33,117.50; net 245,335.00) are regression tests in `packages/payroll-engine/src/cumulative.test.ts`.
+
 ## 3. Components
 
 Each component has: `code`, `name`, `sortOrder`, `base`, `employeeRate`, `employerRate`, optional
 `annualThreshold`, optional `annualCeiling`, optional progressive `brackets` (annual band limits with a
 rate each), optional `minAge`/`maxAge`, and `reducesStatutoryIncome`.
+
+Each component also has a **calculation method** — `PERIOD` (each pay period alone) or `CUMULATIVE` (see
+§4a) — and a **bracket basis**: bands measured on the amount after the threshold (`AFTER_THRESHOLD`) or on
+the base itself (`BEFORE_THRESHOLD`, e.g. "30% on statutory income above J$6,000,000").
 
 `base` is one of:
 
@@ -90,10 +110,26 @@ Implemented in `packages/payroll-engine/src/engine.ts` (`calculatePay`):
 8. **Net pay** = gross − statutory employee amounts − voluntary deductions. A negative net is flagged as
    a warning that must be resolved before approval.
 
-**Periodisation:** annual thresholds, ceilings and bracket limits are divided by periods per year for
-the run's frequency. Calculations are **per period** — there is no cumulative year-to-date
-annualisation or true-up. If Jamaican rules applied by the company require cumulative treatment, this
-must be raised with the payroll specialist before go-live (see known limitations).
+**Periodisation:** annual thresholds, ceilings and bracket limits are multiplied by the fraction of the
+tax year the period represents (1 / periods per year; 0 for a supplemental run in an already-counted
+period).
+
+## 4a. Cumulative (year-to-date) method
+
+For a `CUMULATIVE` component the engine recalculates the amount due on year-to-date figures and deducts
+only the difference from what was already deducted in the tax year (the company's *tax year starts in*
+setting; calendar year for Jamaica):
+
+1. YTD base = base of earlier approved runs in the tax year + this period's base (reversal runs subtract).
+2. YTD threshold, ceiling and band limits = the sum of each period's periodised allowance (so a threshold
+   change on 1 April applies from that date only).
+3. Amount due YTD = rules applied to the YTD figures; this period = due YTD − already deducted YTD.
+4. Never negative: if earlier periods over-deducted, nothing is deducted now, a warning names the excess,
+   and later periods absorb it (or the annual return refunds it).
+
+Each payslip line stores the period allowances and, for cumulative components, the YTD position used, so
+later periods and audits can reproduce the result. Migrated legacy runs and runs calculated before this
+feature fall back to the current version's periodised allowances.
 
 **Rounding and precision:** all arithmetic uses decimal (40 significant digits, no binary floating
 point). Every money line is rounded **half-up to 2 decimal places** when produced; totals are sums of

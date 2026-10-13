@@ -7,6 +7,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { AuthCard } from '@/layouts/PublicLayout';
 import { api } from '@/lib/api';
+import { SsoButtons, ssoErrorMessage } from '@/components/sso';
 import { applyServerErrors, useZodForm } from '@/lib/hooks';
 import { useSession } from '@/lib/session';
 
@@ -43,6 +44,7 @@ export function Login() {
       }
     >
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
+        {ssoErrorMessage(params.get('sso_error')) && !error && <Alert tone="error">{ssoErrorMessage(params.get('sso_error'))}</Alert>}
         {error && (
           <Alert tone="error">
             {error.message}
@@ -66,6 +68,9 @@ export function Login() {
           Sign in
         </Button>
       </form>
+      <div className="mt-4">
+        <SsoButtons next={params.get('next')} />
+      </div>
     </AuthCard>
   );
 }

@@ -40,7 +40,7 @@ its implementation and verification. Status values:
 | ID | Status | Implementation / evidence |
 |---|---|---|
 | SEC-001 | Done | Argon2id (`password.service.ts`), verify-email, forgot/reset with hashed one-time tokens, enumeration-safe responses |
-| SEC-002 | Partial | HttpOnly + SameSite cookies, server-side sessions, idle/absolute expiry, rotation, revocation on password change/deactivation. Google/Microsoft SSO ("optional later") not implemented |
+| SEC-002 | Done | HttpOnly + SameSite cookies, server-side sessions, idle/absolute expiry, rotation, revocation; Google/Microsoft OpenID Connect sign-in with PKCE, nonce and signature checks (`auth/sso.*`, `sso.int-spec.ts`) |
 | SEC-003 | Done | Multi-membership users; explicit active tenant in the session (`switch-tenant`); tenant never taken from request input |
 | SEC-004 | Done | Global `AuthGuard` + service-layer checks; tenant-scoped custom roles (`users` module); AC-12 IDOR tests |
 | SEC-005 | Done | Invite / resend / deactivate / reactivate; seats counted transactionally including pending invites |
@@ -97,9 +97,9 @@ its implementation and verification. Status values:
 | PAY-001 | Done | Weekly/fortnightly/monthly runs with period/pay dates; department or employee selection |
 | PAY-002 | Done | Monthly salaried pay from contract amount; hourly equivalent from configured standard hours |
 | PAY-003 | Done | Basic, approved overtime, taxable/non-taxable allowances, bonus, commission, retro, paid/unpaid leave |
-| PAY-004 | Done (engine) / Owner (rates) | PAYE, NIS, NHT, Education Tax, HEART components as configurable versioned rules; voluntary deductions (pension, insurance, loans with balances, garnishment). Real rates must be entered and approved by the tenant |
+| PAY-004 | Done (engine) / Owner (sign-off) | PAYE, NIS, NHT, Education Tax, HEART as versioned rules; researched Jamaica reference packs importable as DRAFT (`payroll-engine/src/reference/jamaica.ts`); voluntary deductions (pension, insurance, loans, garnishment) |
 | PAY-005 | Done | No statutory constants in code; real tenants start with a zero-rate DRAFT template that cannot be approved while all rates are zero |
-| PAY-006 | Done | decimal.js, half-up 2 dp per line, documented order of operations, periodised thresholds/ceilings — see [payroll policy](PAYROLL_CALCULATION_POLICY.md). Specialist-approved examples are an owner gate |
+| PAY-006 | Done | decimal.js, half-up 2 dp per line, documented order of operations; per-period or **cumulative year-to-date** method per component, bracket basis before/after threshold — see [payroll policy](PAYROLL_CALCULATION_POLICY.md). Specialist-approved examples are an owner gate |
 | PAY-007 | Done | Draft → Prepared → Reviewed → Approved → Locked with separate preparer/reviewer/approver rules |
 | PAY-008 | Done | Snapshot per employee (inputs, lines, rule version, actors, hash); DB triggers reject changes; reversal runs; AC-08/AC-09 |
 | PAY-009 | Done | Per-employee PDF payslips in private storage, bank file CSV/XLSX batches, statutory and departmental reports |
@@ -143,8 +143,8 @@ its implementation and verification. Status values:
 | LIC-010 | Done | FREE/TRIAL/ACTIVE/GRACE/EXPIRED/SUSPENDED/REVOKED; feature and read-only enforcement in the guard/services; AC-11 |
 | LIC-011 | Done | Transactional counts under tenant lock; downgrades never delete data |
 | LIC-012 | Done | Append-only subscription and payment event logs plus platform audit |
-| LIC-013 | Partial | Renewals queue (expiring/grace/expired) and usage views. Notification templates and subscription analytics not implemented |
-| LIC-014 | Not done | Invoice/receipt PDFs and customer statements |
+| LIC-013 | Partial | Renewals queue and usage views; automatic renewal reminders (30/14/7/1 days), grace and expiry notices. Subscription analytics not implemented |
+| LIC-014 | Done | Invoices (gap-free numbering, optional GCT, void), receipts for verified payments, customer statements; tenant access to its own documents (`billing/*`, `billing.int-spec.ts`) |
 
 ### 11. Non-functional
 
@@ -160,8 +160,8 @@ its implementation and verification. Status values:
 | NFR-008 | Partial | Semantic labels, keyboard focus traps, loading/error states; no formal WCAG 2.2 AA audit |
 | NFR-009 | Owner | Legal/payroll review of privacy notices and obligations |
 | NFR-010 | Partial | Docker images, compose, CI and automated migrations; staging/production environments and secrets manager to be provisioned |
-| NFR-011 | Not done | Retention schedule, tenant data export bundle and deletion workflow |
-| NFR-012 | Not done | Approval/expiry/scheduled-report notifications (only account emails: verification, invitations, resets) |
+| NFR-011 | Done | Retention policy with legal minimums enforced daily, legal hold, full data-export ZIP, account closure with cooling-off and Qwik approval (`retention/*`, `data-lifecycle.int-spec.ts`) |
+| NFR-012 | Partial | In-app + email notifications for approvals, decisions, payroll, payslips and subscription expiry with per-category preferences and history (`notifications/*`); scheduled report emails not implemented |
 
 ### 12. Acceptance scenarios
 

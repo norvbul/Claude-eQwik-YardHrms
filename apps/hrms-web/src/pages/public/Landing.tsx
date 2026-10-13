@@ -166,7 +166,7 @@ function Pricing() {
               <h3 className="text-lg font-semibold">{p.name}</h3>
               <p className="mt-3 text-3xl font-bold text-slate-900">
                 {p.isFree ? 'Free' : p.price ? fmt(p.price, p.currency) : 'Contact us'}
-                {!p.isFree && p.price && <span className="text-sm font-medium text-slate-500"> / {p.durationMonths === 12 || !p.durationMonths ? 'year' : `${p.durationMonths} months`}</span>}
+                {!p.isFree && p.price && <span className="block text-sm font-medium text-slate-500">per {p.durationMonths === 12 || !p.durationMonths ? 'year' : `${p.durationMonths} months`}</span>}
               </p>
               <p className="mt-1 text-sm text-slate-500">
                 Up to {p.employeeLimit} employees · {p.userLimit} users

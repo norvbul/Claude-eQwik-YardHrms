@@ -7,8 +7,8 @@ and one-time activation codes.
 > **Status: pre-release — not production-ready.** The software is functionally complete for the release-1
 > scope and passes its automated acceptance suite, but it must not process live payroll or customer data
 > until the gates in [Known limitations & open decisions](docs/known-limitations.md) are closed — most
-> importantly, the statutory payroll rules must be entered from authoritative sources and signed off by a
-> qualified Jamaican payroll specialist. No statutory rates are shipped in the code.
+> importantly, the researched Jamaica statutory reference packs must be verified, approved and signed off
+> by a qualified Jamaican payroll specialist, and the draft legal texts reviewed.
 
 ## What is in the box
 
@@ -99,6 +99,7 @@ See [docs/testing.md](docs/testing.md) for the acceptance-scenario mapping and t
 - [Company administrator guide](docs/admin-guide.md)
 - [Payroll configuration & calculation policy](docs/PAYROLL_CALCULATION_POLICY.md)
 - [Subscription administration guide (Licence Manager)](docs/subscription-admin.md)
+- [Pricing proposal](docs/pricing.md)
 - [Legacy migration runbook](tools/legacy-migration/README.md)
 - [Testing](docs/testing.md)
 - [Known limitations & open owner decisions](docs/known-limitations.md)

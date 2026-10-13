@@ -31,8 +31,10 @@ import { DataExportService } from './retention/data-export.service';
 import { RetentionService } from './retention/retention.service';
 import { PlatformBillingController, TenantBillingController } from './billing/billing.controller';
 import { BillingService } from './billing/billing.service';
+import { SsoController } from './auth/sso.controller';
+import { SsoService } from './auth/sso.service';
 
-export const DOMAIN_PROVIDERS = [AuthService, EmployeesService, LeaveService, TimeService, StatutoryService, PayrollService, PayslipService, ImportsService, ReportsService, PlatformService, RetentionService, DataExportService, BillingService];
+export const DOMAIN_PROVIDERS = [AuthService, EmployeesService, LeaveService, TimeService, StatutoryService, PayrollService, PayslipService, ImportsService, ReportsService, PlatformService, RetentionService, DataExportService, BillingService, SsoService];
 
 @Module({
   imports: [CoreModule],
@@ -59,6 +61,7 @@ export const DOMAIN_PROVIDERS = [AuthService, EmployeesService, LeaveService, Ti
     PlatformDataLifecycleController,
     PlatformBillingController,
     TenantBillingController,
+    SsoController,
   ],
   providers: [{ provide: APP_GUARD, useClass: AuthGuard }, ...DOMAIN_PROVIDERS],
 })

@@ -35,6 +35,7 @@ import { api } from '@/lib/api';
 import { applyServerErrors, useAction, useApi, usePaged, useZodForm } from '@/lib/hooks';
 import { useSession } from '@/lib/session';
 import { NotificationPreferences } from '@/components/notifications';
+import { LinkedSignIns } from '@/components/sso';
 import { DataPrivacy } from './DataPrivacy';
 
 // ── Users & roles (SEC-004/005) ─────────────────────────────────────────────
@@ -837,6 +838,7 @@ export function Account() {
           </CardBody>
         </Card>
         <NotificationPreferences />
+        <LinkedSignIns />
       </div>
     </>
   );

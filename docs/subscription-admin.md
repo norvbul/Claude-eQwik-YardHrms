@@ -19,8 +19,8 @@ The owner decision on payment controls is implemented as `PAYMENT_REQUIRE_SEPARA
 *Products* and *Plans*. A plan has code, name, Free flag, optional price and currency, duration in months,
 employee limit, user limit, grace days, status and features (EMPLOYEES, LEAVE, TIMESHEETS, OVERTIME,
 PAYROLL, PAYSLIPS, BULK_IMPORT, ADVANCED_REPORTS, AUDIT_VIEW). Seed plans (Free 5/2, Starter 25/5,
-Professional 100/15, Business 250/30) are **proposals** — prices are deliberately blank until the owner
-sets them. Changing a plan affects subscriptions on it from the next entitlement check; it never deletes
+Professional 100/15, Business 250/30) carry **proposed** annual prices (J$95,000 / J$295,000 /
+J$595,000, GCT-exclusive — see [pricing](pricing.md)) until the owner confirms or changes them. Changing a plan affects subscriptions on it from the next entitlement check; it never deletes
 tenant data. Retire plans rather than deleting them.
 
 ## Customers
@@ -95,7 +95,8 @@ reactivate beyond the new limit.
 ## Renewals, usage and audit
 
 - *Renewals*: subscriptions expiring in the next 30 days, in grace, or expired — the follow-up queue for
-  account managers (notification templates and analytics are not yet built; contact customers directly).
+  account managers. Company administrators are reminded automatically 30, 14, 7 and 1 day(s) before
+  expiry and when grace starts or the subscription expires.
 - *Usage*: active employees and users against limits per company — counts only, no personal data.
 - *Audit*: platform actions (payments, subscriptions, codes, overrides, staff, MFA resets) and
   subscription events. Tenant HR/payroll audit detail is not shown here.
@@ -112,3 +113,22 @@ is signed out everywhere and notified by email.
 Customers moving from the Apps Script edition: legacy InstallationIDs and `LOCAL_FREE` caches are not
 used. The migration tool's reconciliation report lists each legacy licence with the matched company and
 the recommended action; activate paid plans only through the normal payment → subscription flow above.
+
+## Invoices, receipts and statements
+
+- *Invoices → New invoice*: choose the customer and either a plan (uses the plan price) or enter lines.
+  Numbers run INV-YYYY-00001… without gaps. GCT is added only when `BILLING_GCT_RATE` is set (Qwik must be
+  GCT-registered). A paid invoice cannot be voided; void others with a reason (the number is never reused).
+- Record the payment with the invoice number; when a different officer verifies it, the invoice becomes
+  PAID. Reversing the payment reopens the invoice.
+- *Receipt PDF* on a verified payment issues receipt RCT-YYYY-00001… once; later downloads show the same
+  receipt, marked REVERSED if the payment is reversed.
+- *Statement* on a customer gives the year to date: opening balance, invoices, payments, reversals and the
+  running balance. Companies see their own invoices, receipts and statement on their Subscription page.
+
+## Account closures and legal holds
+
+*Closures & Legal Holds* (Super Admin) lists closure requests from companies. Confirm the request with the
+company's director through a known contact and check for disputes or unpaid invoices before approving.
+Closure executes after the 30-day cooling-off period. *Legal hold* (with a reason) stops all retention
+deletion and closure for that company until lifted — use it for litigation, audits or investigations.
