@@ -71,3 +71,7 @@ export const TIMESHEET_IMPORT_COLUMNS = [
   { key: 'breakHours', label: 'Break Hours', required: false },
   { key: 'comments', label: 'Comments', required: false },
 ] as const;
+
+/** MFA reset after out-of-band identity verification (lost authenticator). */
+export const mfaResetSchema = z.object({ reason: z.string().trim().min(10, 'Describe how the person’s identity was verified (min 10 characters)').max(500) });
+export const platformMfaResetSchema = mfaResetSchema.extend({ email: z.string().trim().toLowerCase().email() });

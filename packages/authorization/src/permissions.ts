@@ -82,6 +82,7 @@ export const PlatformPermissions = {
   USAGE_READ: 'platform.usage.read',
   AUDIT_READ: 'platform.audit.read',
   STAFF_MANAGE: 'platform.staff.manage',
+  ACCOUNTS_MFA_RESET: 'platform.accounts.mfa_reset',
 } as const;
 
 export type PlatformPermission = (typeof PlatformPermissions)[keyof typeof PlatformPermissions];
@@ -156,4 +157,5 @@ export const PLATFORM_PERMISSION_DESCRIPTIONS: Record<PlatformPermission, string
   'platform.usage.read': 'Monitor tenant capacity usage',
   'platform.audit.read': 'View the platform audit log',
   'platform.staff.manage': 'Manage Qwik staff accounts',
+  'platform.accounts.mfa_reset': "Reset a user's MFA after verifying their identity",
 };

@@ -4,6 +4,7 @@ import { ApiConsumes, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { PlatformPermissions as PP } from '@yardhrms/authorization';
 import {
+  platformMfaResetSchema,
   capacitySchema,
   changePlanSchema,
   codeIssueSchema,
@@ -415,6 +416,28 @@ export class PlatformController {
     await this.prisma.session.updateMany({ where: { userId: id, kind: 'PLATFORM', revokedAt: null }, data: { revokedAt: new Date() } });
     await this.audit.record({ scope: 'PLATFORM', action: 'platform.staff_removed', entityType: 'User', entityId: id, actorUserId: a.user.id });
     return { removed: true };
+  }
+
+  /** Lost-authenticator recovery for any account (sole company administrators, Qwik staff). */
+  @Post('accounts/reset-mfa')
+  @Permissions(PP.ACCOUNTS_MFA_RESET)
+  @HttpCode(200)
+  async resetMfa(@Auth() a: AuthContext, @ZBody(platformMfaResetSchema) body: z.infer<typeof platformMfaResetSchema>) {
+    const user = await this.prisma.user.findUnique({ where: { email: body.email } });
+    if (!user) throw notFound('Account');
+    if (user.id === a.user.id) throw businessRule('You cannot reset your own MFA');
+    if (!user.mfaEnabledAt) throw businessRule('MFA is not enabled for this account');
+    await this.prisma.tx(async (tx) => {
+      await tx.user.update({ where: { id: user.id }, data: { mfaSecretEnc: null, mfaEnabledAt: null } });
+      await tx.session.updateMany({ where: { userId: user.id, revokedAt: null }, data: { revokedAt: new Date() } });
+      await this.audit.record({ scope: 'PLATFORM', action: 'platform.account_mfa_reset', entityType: 'User', entityId: user.id, reason: body.reason, metadata: { email: user.email }, actorUserId: a.user.id }, tx);
+    });
+    const { text, html } = this.mail.layout('Your MFA was reset', [
+      'Qwik Business Solutions support reset multi-factor authentication on your account and signed you out of all sessions.',
+      'You will be asked to enrol a new authenticator at your next sign-in. If you did not request this, contact Qwik support immediately.',
+    ]);
+    await this.mail.send({ to: user.email, subject: 'Your MFA was reset', template: 'mfa_reset', text, html });
+    return { reset: true };
   }
 
   @Get('settings')

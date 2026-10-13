@@ -75,6 +75,22 @@ function UsersTab() {
       toast.error('Action failed', errorMessage(e));
     }
   };
+  const resetMfa = async (r: any) => {
+    const c = await confirm({
+      title: 'Reset MFA',
+      message: `${r.user.fullName} will be signed out everywhere and must enrol a new authenticator at next sign-in. Only do this after verifying their identity (e.g. in person or by a call-back to a known number).`,
+      tone: 'danger',
+      requireReason: 'How was their identity verified? (min 10 characters)',
+    });
+    if (!c.ok) return;
+    try {
+      await api.post(`/users/${r.id}/reset-mfa`, { reason: c.reason });
+      toast.success('MFA reset', `${r.user.email} has been notified by email`);
+      await qc.invalidateQueries({ queryKey: ['users'] });
+    } catch (e) {
+      toast.error('Could not reset MFA', errorMessage(e));
+    }
+  };
   return (
     <Card>
       <CardHeader title="Users" description={me?.entitlements ? `${me.entitlements.activeUsers} of ${me.entitlements.userLimit} seats used` : undefined} actions={canManage && <Button size="sm" icon={<UserPlus className="h-4 w-4" />} onClick={() => setInviting(true)}>Invite user</Button>} />
@@ -100,6 +116,11 @@ function UsersTab() {
                   </Button>
                   {r.status === 'INVITED' && (
                     <Button size="sm" variant="ghost" icon={<Mail className="h-4 w-4" />} aria-label="Resend invitation" onClick={() => api.post(`/users/${r.id}/resend-invite`).then(() => toast.success('Invitation resent')).catch((e) => toast.error('Failed', errorMessage(e)))} />
+                  )}
+                  {r.user.mfaEnabled && r.user.email !== me?.user.email && (
+                    <Button size="sm" variant="ghost" onClick={() => resetMfa(r)}>
+                      Reset MFA
+                    </Button>
                   )}
                   {r.status !== 'DEACTIVATED' ? (
                     <Button size="sm" variant="ghost" className="text-red-600" onClick={() => act(`/users/${r.id}/deactivate`, 'Deactivate user')}>

@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { staffSchema } from '@yardhrms/types';
+import { platformMfaResetSchema, staffSchema } from '@yardhrms/types';
 import {
   Alert,
   Badge,
@@ -730,6 +730,7 @@ export function Settings() {
           </Card>
         )}
       </div>
+      {can('platform.accounts.mfa_reset') && <MfaResetCard />}
       <Modal open={adding} onClose={() => setAdding(false)} title="Add Qwik staff member" footer={<><Button variant="outline" onClick={() => setAdding(false)}>Cancel</Button><Button onClick={submit} loading={form.formState.isSubmitting}>Add</Button></>}>
         <form onSubmit={submit} className="space-y-4">
           <Field label="Full name" error={errors.fullName?.message} required>{(p) => <Input {...p} {...form.register('fullName')} />}</Field>
@@ -745,5 +746,36 @@ export function Settings() {
         </form>
       </Modal>
     </>
+  );
+}
+
+/** Lost-authenticator recovery for any account; requires a recorded identity verification. */
+function MfaResetCard() {
+  const toast = useToast();
+  const confirm = useConfirm();
+  const form = useZodForm<any>(platformMfaResetSchema, { defaultValues: { email: '', reason: '' } });
+  const errors = form.formState.errors as any;
+  const submit = form.handleSubmit(async (v) => {
+    const c = await confirm({ title: 'Reset MFA', message: `${v.email} will be signed out of every session and must enrol a new authenticator at next sign-in. The reset is recorded in the platform audit log.`, tone: 'danger' });
+    if (!c.ok) return;
+    try {
+      await api.post('/platform/accounts/reset-mfa', v);
+      toast.success('MFA reset', 'The account holder has been notified by email.');
+      form.reset({ email: '', reason: '' });
+    } catch (x) {
+      if (!applyServerErrors(form, x)) toast.error('Could not reset MFA', errorMessage(x));
+    }
+  });
+  return (
+    <Card className="mt-5">
+      <CardHeader title="Reset an account's MFA" description="For a company's only administrator or a Qwik staff member who lost their authenticator. Verify identity out of band first (call-back to a known number, video call with ID)." />
+      <CardBody>
+        <form onSubmit={submit} className="grid gap-4 md:grid-cols-[1fr_2fr_auto] md:items-end">
+          <Field label="Account email" error={errors.email?.message} required>{(p) => <Input {...p} type="email" {...form.register('email')} />}</Field>
+          <Field label="How was identity verified?" error={errors.reason?.message} required>{(p) => <Input {...p} {...form.register('reason')} />}</Field>
+          <Button type="submit" variant="danger" loading={form.formState.isSubmitting}>Reset MFA</Button>
+        </form>
+      </CardBody>
+    </Card>
   );
 }

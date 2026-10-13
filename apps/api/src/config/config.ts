@@ -72,6 +72,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     if (c.MFA_ENFORCEMENT !== 'required') throw new Error('MFA_ENFORCEMENT must be "required" in production');
     if (!c.COOKIE_SECURE) throw new Error('COOKIE_SECURE must be true in production');
     if (c.RATE_LIMIT_DISABLED) throw new Error('RATE_LIMIT_DISABLED is not permitted in production');
+    if (c.STORAGE_DRIVER !== 's3') throw new Error('STORAGE_DRIVER must be "s3" (private S3-compatible storage) in production');
+    if (!c.SMTP_HOST) throw new Error('SMTP_HOST is required in production (verification, invitation and reset emails)');
   }
   cached = {
     ...c,

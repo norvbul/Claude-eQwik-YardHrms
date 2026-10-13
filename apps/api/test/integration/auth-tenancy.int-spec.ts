@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import { Client, PASSWORD, TestContext, addMember, bootstrap, employeeBody, registerTenant } from './helpers';
+import { Client, PASSWORD, TestContext, addMember, bootstrap, createPlatformStaff, employeeBody, registerTenant } from './helpers';
 
 describe('Identity, tenancy and security', () => {
   let ctx: TestContext;
@@ -135,5 +135,46 @@ describe('Identity, tenancy and security', () => {
     for (let i = 0; i < 5; i++) await c.agent.post('/api/v1/auth/login').send({ email, password: 'wrong-password-123' });
     const res = await c.agent.post('/api/v1/auth/login').send({ email, password: PASSWORD });
     expect(res.status).toBe(429);
+  });
+  it('MFA reset: tenant admin for single-organisation users, Qwik super admin for anyone; sessions revoked and audited', async () => {
+    const { admin, tenantId } = await registerTenant(ctx);
+    const member = await addMember(ctx, tenantId, ['PAYROLL_OFFICER']);
+    const users = (await admin.get('/users')).body.data as { id: string; user: { email: string } }[];
+    const target = users.find((u) => u.user.email === member.email)!;
+    const self = users.find((u) => u.user.email !== member.email)!;
+
+    expect((await admin.post(`/users/${self.id}/reset-mfa`, { reason: 'Lost phone, identity verified by call' })).status).toBe(422);
+    expect((await admin.post(`/users/${target.id}/reset-mfa`, { reason: 'short' })).status).toBe(400);
+    const ok = await admin.post(`/users/${target.id}/reset-mfa`, { reason: 'Lost phone; identity verified in person by HR' });
+    expect(ok.status).toBe(200);
+    expect((await ctx.prisma.user.findUniqueOrThrow({ where: { id: member.userId } })).mfaEnabledAt).toBeNull();
+    expect((await member.client.get('/auth/me')).status).toBe(401); // all sessions revoked
+    expect(ctx.mail.outbox.some((m) => m.to === member.email && m.template === 'mfa_reset')).toBe(true);
+    const audit = await ctx.prisma.auditEvent.findFirst({ where: { tenantId, action: 'user.mfa_reset', entityId: member.userId } });
+    expect(audit?.reason).toMatch(/identity verified/);
+    // At the next sign-in the privileged user must enrol MFA again
+    const again = new Client(ctx);
+    await again.login(member.email);
+    expect((await again.get('/employees')).status).toBe(403);
+    await again.completeMfa();
+    await again.refreshCsrf();
+    expect((await again.get('/employees')).status).toBe(200);
+
+    // A user who also belongs to another organisation can only be reset by Qwik
+    const other = await registerTenant(ctx);
+    const role = await ctx.prisma.role.findFirstOrThrow({ where: { tenantId: other.tenantId, code: 'HR_OFFICER' } });
+    await ctx.prisma.tenantMembership.create({ data: { tenantId: other.tenantId, userId: member.userId, status: 'ACTIVE', roles: { create: [{ roleId: role.id }] } } });
+    const refused = await admin.post(`/users/${target.id}/reset-mfa`, { reason: 'Lost phone; identity verified in person by HR' });
+    expect(refused.status).toBe(422);
+    expect(refused.body.error.message).toMatch(/another organization/);
+
+    const officer = await createPlatformStaff(ctx, 'PLATFORM_LICENSING_OFFICER');
+    await officer.client.refreshCsrf();
+    expect((await officer.client.post('/platform/accounts/reset-mfa', { email: member.email, reason: 'Identity verified by video call' })).status).toBe(403);
+    const sup = await createPlatformStaff(ctx, 'PLATFORM_SUPER_ADMIN');
+    await sup.client.refreshCsrf();
+    const platformReset = await sup.client.post('/platform/accounts/reset-mfa', { email: member.email, reason: 'Identity verified by video call with ID' });
+    expect(platformReset.status).toBe(200);
+    expect(await ctx.prisma.auditEvent.count({ where: { action: 'platform.account_mfa_reset', entityId: member.userId } })).toBe(1);
   });
 });

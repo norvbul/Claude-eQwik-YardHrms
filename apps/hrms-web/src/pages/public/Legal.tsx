@@ -77,6 +77,7 @@ export function Disclaimer() {
       </p>
       <h2>General</h2>
       <p>The software is provided to assist with HR administration and does not constitute legal, tax or accounting advice.</p>
+      <p>eQwik YardHRMS™ is published by Qwik Business Solutions™.</p>
     </LegalPage>
   );
 }

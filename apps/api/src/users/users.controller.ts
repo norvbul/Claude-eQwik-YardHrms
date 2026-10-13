@@ -1,14 +1,14 @@
 import { Controller, Get, HttpCode, Inject, Param, Patch, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ALL_TENANT_PERMISSIONS, PERMISSION_DESCRIPTIONS, TenantPermissions as P } from '@yardhrms/authorization';
-import { inviteUserSchema, roleSchema, updateMembershipSchema } from '@yardhrms/types';
+import { inviteUserSchema, mfaResetSchema, roleSchema, updateMembershipSchema } from '@yardhrms/types';
 import { z } from 'zod';
 import { AuditService } from '../audit/audit.service';
 import { requireTenant, type AuthContext } from '../auth/auth-context';
 import { SessionService } from '../auth/session.service';
 import { Auth, Permissions } from '../common/decorators';
 import { CryptoService } from '../common/crypto.service';
-import { badRequest, businessRule, conflict, notFound } from '../common/errors';
+import { badRequest, businessRule, conflict, forbidden, notFound } from '../common/errors';
 import { ZBody } from '../common/zod';
 import { APP_CONFIG, type AppConfig } from '../config/config';
 import { EntitlementsService } from '../entitlements/entitlements.service';
@@ -146,6 +146,35 @@ export class UsersController {
       where: { tenantId, status: 'ACTIVE', id: { not: excludingMembershipId }, roles: { some: { role: { code: 'COMPANY_ADMIN' } } } },
     });
     if (admins === 0) throw businessRule('Your organization must keep at least one active Company Administrator');
+  }
+
+  /**
+   * Lost-authenticator recovery. Allowed only for users whose sole organisation is this one, so one
+   * company cannot weaken an account that also guards another company's data (Qwik support handles those).
+   */
+  @Post('users/:id/reset-mfa')
+  @Permissions(P.USERS_MANAGE)
+  @HttpCode(200)
+  async resetMfa(@Auth() a: AuthContext, @Param('id') id: string, @ZBody(mfaResetSchema) body: z.infer<typeof mfaResetSchema>) {
+    const auth = requireTenant(a);
+    if (id === auth.membershipId) throw businessRule('You cannot reset your own MFA. Ask another Company Administrator or Qwik support.');
+    const m = await this.prisma.tenantMembership.findFirst({ where: { id, tenantId: auth.tenantId }, include: { user: true, tenant: { select: { displayName: true } } } });
+    if (!m) throw notFound('User');
+    if (m.user.platformRole) throw forbidden('MFA for Qwik staff accounts can only be reset by Qwik');
+    if (!m.user.mfaEnabledAt) throw businessRule('MFA is not enabled for this user');
+    const elsewhere = await this.prisma.tenantMembership.count({ where: { userId: m.userId, tenantId: { not: auth.tenantId }, status: { in: ['ACTIVE', 'INVITED'] } } });
+    if (elsewhere) throw businessRule('This person also belongs to another organization. Ask Qwik support to reset their MFA after verifying their identity.');
+    await this.prisma.tx(async (tx) => {
+      await tx.user.update({ where: { id: m.userId }, data: { mfaSecretEnc: null, mfaEnabledAt: null } });
+      await tx.session.updateMany({ where: { userId: m.userId, revokedAt: null }, data: { revokedAt: new Date() } });
+      await this.audit.record({ tenantId: auth.tenantId, action: 'user.mfa_reset', entityType: 'User', entityId: m.userId, reason: body.reason, metadata: { membershipId: m.id } }, tx);
+    });
+    const { text, html } = this.mail.layout('Your MFA was reset', [
+      `An administrator of ${m.tenant.displayName} reset multi-factor authentication on your eQwik YardHRMS account and signed you out.`,
+      'You will be asked to enrol a new authenticator at your next sign-in. If you did not request this, contact your administrator immediately.',
+    ]);
+    await this.mail.send({ to: m.user.email, subject: 'Your eQwik YardHRMS MFA was reset', template: 'mfa_reset', text, html });
+    return { reset: true };
   }
 
   @Post('users/:id/deactivate')
