@@ -93,6 +93,7 @@ See [docs/testing.md](docs/testing.md) for the acceptance-scenario mapping and t
 
 ## Documentation
 
+- **[Setup & deployment guide](docs/setup-deployment-guide.md)** · **[User manual](docs/user-manual.md)**
 - [Implementation plan & PRD traceability](docs/implementation-plan.md)
 - [Production deployment guide](docs/deployment.md) · [Backup & restore](docs/backup-restore.md)
 - [Security notes](docs/security.md)
