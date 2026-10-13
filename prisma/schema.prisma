@@ -335,6 +335,8 @@ model User {
   memberships TenantMembership[]
   sessions    Session[]
   tokens      EmailToken[]
+  notifications           Notification[]
+  notificationPreferences NotificationPreference[]
 
   @@map("users")
 }
@@ -1759,4 +1761,47 @@ model LegacyIdMap {
 
   @@unique([tenantId, entityType, legacyId])
   @@map("legacy_id_map")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Notifications (NFR-012): in-app inbox + email delivery
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Notification {
+  id          String    @id @default(uuid()) @db.Char(36)
+  tenantId    String?   @map("tenant_id") @db.Char(36)
+  userId      String    @map("user_id") @db.Char(36)
+  /// approvals | decisions | payroll | payslips | subscription
+  category    String    @db.VarChar(30)
+  type        String    @db.VarChar(60)
+  title       String    @db.VarChar(190)
+  body        String    @db.VarChar(1000)
+  /// App-relative link, e.g. /app/leave
+  link        String?   @db.VarChar(255)
+  /// Prevents duplicate reminders (unique per user)
+  dedupeKey   String?   @map("dedupe_key") @db.VarChar(160)
+  readAt      DateTime? @map("read_at")
+  /// PENDING | SENT | SKIPPED | FAILED
+  emailStatus String    @default("PENDING") @map("email_status") @db.VarChar(20)
+  emailedAt   DateTime? @map("emailed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dedupeKey])
+  @@index([userId, readAt, createdAt])
+  @@index([emailStatus, createdAt])
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  userId    String   @map("user_id") @db.Char(36)
+  category  String   @db.VarChar(30)
+  email     Boolean  @default(true)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, category])
+  @@map("notification_preferences")
 }

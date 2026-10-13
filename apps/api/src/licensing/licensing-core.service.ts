@@ -5,6 +5,7 @@ import { ErrorCodes } from '@yardhrms/types';
 import { AuditService } from '../audit/audit.service';
 import { CryptoService } from '../common/crypto.service';
 import { AppError, businessRule, invalidState, notFound } from '../common/errors';
+import { NotificationService } from '../notifications/notification.service';
 import { PrismaService, Tx } from '../prisma/prisma.service';
 
 type PlanWithFeatures = Plan & { features: { featureCode: string; enabled: boolean }[] };
@@ -20,6 +21,7 @@ export class LicensingCore {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly crypto: CryptoService,
+    private readonly notifications: NotificationService,
   ) {}
 
   private featuresOf(plan: PlanWithFeatures): string[] {
@@ -354,8 +356,52 @@ export class LicensingCore {
       });
       if (to === 'GRACE') grace++;
       else expired++;
+      if (sub.tenantId) {
+        const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : '');
+        await this.notifyAdmins(
+          sub.tenantId,
+          to === 'GRACE' ? 'subscription_grace' : 'subscription_expired',
+          to === 'GRACE' ? 'Your subscription has ended — grace period started' : 'Your subscription has expired — workspace is now read-only',
+          to === 'GRACE'
+            ? `Your paid subscription ended on ${day(sub.periodEnd)}. Everything keeps working until ${day(sub.graceEnd)}; renew before then to avoid read-only mode. Contact Qwik Business Solutions to record your renewal payment.`
+            : 'Your subscription and its grace period have ended. Your data is safe and can still be viewed and exported, but changes are blocked until the subscription is renewed. Contact Qwik Business Solutions to renew.',
+          `sub:${sub.id}:${day(sub.periodEnd)}:${to}`,
+        );
+      }
     }
     await this.prisma.activationCode.updateMany({ where: { status: 'ISSUED', expiresAt: { lt: now } }, data: { status: 'EXPIRED' } });
+    await this.sendExpiryReminders(now);
     return { grace, expired };
+  }
+
+  private async notifyAdmins(tenantId: string, type: string, title: string, body: string, dedupeKey: string) {
+    const admins = await this.prisma.tenantMembership.findMany({ where: { tenantId, status: 'ACTIVE', roles: { some: { role: { code: 'COMPANY_ADMIN' } } } }, select: { userId: true } });
+    await this.notifications.notify(this.prisma, { tenantId, userIds: admins.map((a) => a.userId), category: 'subscription', type, title, body, link: '/app/subscription', dedupeKey });
+  }
+
+  /** Renewal reminders 30, 14, 7 and 1 day(s) before a paid subscription ends (each sent once per term). */
+  async sendExpiryReminders(now = new Date()): Promise<number> {
+    const horizon = new Date(now.getTime() + 30 * 86_400_000);
+    const subs = await this.prisma.subscription.findMany({
+      where: { status: { in: ['ACTIVE', 'TRIAL'] }, periodEnd: { gt: now, lte: horizon }, tenantId: { not: null } },
+      include: { plan: true, tenant: { select: { currentSubscriptionId: true } } },
+      take: 1000,
+    });
+    let sent = 0;
+    for (const sub of subs) {
+      if (sub.plan.isFree || sub.tenant?.currentSubscriptionId !== sub.id) continue;
+      const days = Math.ceil((sub.periodEnd!.getTime() - now.getTime()) / 86_400_000);
+      const bucket = days <= 1 ? 1 : days <= 7 ? 7 : days <= 14 ? 14 : 30;
+      const end = sub.periodEnd!.toISOString().slice(0, 10);
+      await this.notifyAdmins(
+        sub.tenantId!,
+        'subscription_expiring',
+        `Your ${sub.plan.name} subscription ends ${days <= 1 ? 'tomorrow' : `in ${days} days`}`,
+        `Your ${sub.plan.name} subscription ends on ${end}${sub.plan.gracePeriodDays ? `, followed by a ${sub.plan.gracePeriodDays}-day grace period` : ''}. To renew, pay Qwik Business Solutions by bank transfer, cash or cheque and send your payment reference; renewals are applied to your existing subscription and need no new activation code.`,
+        `sub:${sub.id}:${end}:d${bucket}`,
+      );
+      sent++;
+    }
+    return sent;
   }
 }

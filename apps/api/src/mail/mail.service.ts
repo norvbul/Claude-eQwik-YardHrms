@@ -33,7 +33,8 @@ export class MailService {
     }
   }
 
-  async send(msg: MailMessage): Promise<void> {
+  /** Returns the delivery status; failures are recorded, never thrown. */
+  async send(msg: MailMessage): Promise<'SENT' | 'LOGGED' | 'CAPTURED' | 'FAILED'> {
     if (this.config.NODE_ENV !== 'production') {
       this.outbox.push(msg);
       if (this.outbox.length > 200) this.outbox.shift();
@@ -59,6 +60,7 @@ export class MailService {
     await this.prisma.outboundEmail
       .create({ data: { toAddress: msg.to, subject: msg.subject.slice(0, 255), template: msg.template, status, error } })
       .catch(() => undefined);
+    return status as 'SENT' | 'LOGGED' | 'CAPTURED' | 'FAILED';
   }
 
   layout(title: string, bodyLines: string[], action?: { label: string; url: string }): { text: string; html: string } {

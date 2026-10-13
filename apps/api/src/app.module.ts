@@ -25,6 +25,7 @@ import { SubscriptionController } from './subscription/subscription.controller';
 import { PlatformController } from './platform/platform.controller';
 import { PlatformService } from './platform/platform.service';
 import { HealthController } from './health.controller';
+import { NotificationsController } from './notifications/notifications.controller';
 
 export const DOMAIN_PROVIDERS = [AuthService, EmployeesService, LeaveService, TimeService, StatutoryService, PayrollService, PayslipService, ImportsService, ReportsService, PlatformService];
 
@@ -48,6 +49,7 @@ export const DOMAIN_PROVIDERS = [AuthService, EmployeesService, LeaveService, Ti
     ReportsController,
     SubscriptionController,
     PlatformController,
+    NotificationsController,
   ],
   providers: [{ provide: APP_GUARD, useClass: AuthGuard }, ...DOMAIN_PROVIDERS],
 })

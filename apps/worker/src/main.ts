@@ -43,6 +43,8 @@ async function main() {
     const dayKey = new Date().toISOString().slice(0, 10);
     await jobs.enqueue('subscriptions.sweep', {}, { dedupeKey: `sweep:${hourKey}` });
     await jobs.enqueue('leave.accruals', {}, { dedupeKey: `accruals:${dayKey}` });
+    // Safety net for notification emails (each notify() also enqueues an immediate delivery job).
+    await jobs.enqueue('notifications.deliver', {}, { dedupeKey: `notify:${new Date().toISOString().slice(0, 15)}` });
   };
   await schedule();
   const timer = setInterval(() => schedule().catch((e) => logger.error(e.message)), HOUR / 4);

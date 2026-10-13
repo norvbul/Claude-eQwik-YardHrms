@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { addMonths, workingDaysBetween } from '@yardhrms/payroll-engine';
 import type { LeaveRequestInput } from '@yardhrms/types';
 import { AuditService } from '../audit/audit.service';
+import { NotificationService } from '../notifications/notification.service';
 import type { TenantAuth } from '../auth/auth-context';
 import { badRequest, businessRule, conflict, forbidden, invalidState, notFound } from '../common/errors';
 import { isoDay, paginate, toDate } from '../common/util';
@@ -32,6 +33,7 @@ export class LeaveService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly notifications: NotificationService,
   ) {}
 
   async holidays(tenantId: string, from: Date, to: Date): Promise<string[]> {
@@ -178,6 +180,15 @@ export class LeaveService {
         },
         tx,
       );
+      await this.notifications.requestSubmitted(tx, { tenantId: auth.tenantId, actorUserId: auth.user.id, actorName: auth.user.fullName }, {
+        kind: 'leave',
+        approvePermission: 'leave.approve',
+        employeeId: employee.id,
+        employeeName: `${employee.firstName} ${employee.lastName}`,
+        summary: `${type.name}, ${input.startDate}${input.endDate !== input.startDate ? ` to ${input.endDate}` : ''} (${days} working day${days === 1 ? '' : 's'})`,
+        link: '/app/leave',
+        id: req.id,
+      });
       return { ...req, startDate: input.startDate, endDate: input.endDate };
     });
   }
@@ -200,6 +211,16 @@ export class LeaveService {
       }
       await tx.leaveApproval.create({ data: { tenantId: auth.tenantId, leaveRequestId: r.id, action: status, actorUserId: auth.user.id, comment: comment ?? null } });
       await this.audit.record({ tenantId: auth.tenantId, action: `leave.${status.toLowerCase()}`, entityType: 'LeaveRequest', entityId: r.id, subjectEmployeeId: r.employeeId, before: { status: 'PENDING' }, after: { status }, reason: comment ?? null }, tx);
+      await this.notifications.requestDecided(tx, { tenantId: auth.tenantId, actorUserId: auth.user.id, actorName: auth.user.fullName }, {
+        kind: 'leave',
+        employeeId: r.employeeId,
+        submittedByUserId: r.submittedByUserId,
+        status,
+        summary: `Leave for ${employee.firstName} ${employee.lastName}, ${isoDay(r.startDate)}${isoDay(r.endDate) !== isoDay(r.startDate) ? ` to ${isoDay(r.endDate)}` : ''}`,
+        comment,
+        link: '/app/leave',
+        id: r.id,
+      });
       return { id, status };
     });
   }

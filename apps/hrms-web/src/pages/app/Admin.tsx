@@ -33,6 +33,7 @@ import { EmployeePicker, FormGrid, useReferenceData } from '@/components/common'
 import { api } from '@/lib/api';
 import { applyServerErrors, useAction, useApi, usePaged, useZodForm } from '@/lib/hooks';
 import { useSession } from '@/lib/session';
+import { NotificationPreferences } from '@/components/notifications';
 
 // ── Users & roles (SEC-004/005) ─────────────────────────────────────────────
 export function UsersRoles() {
@@ -800,6 +801,7 @@ export function Account() {
             )}
           </CardBody>
         </Card>
+        <NotificationPreferences />
       </div>
     </>
   );

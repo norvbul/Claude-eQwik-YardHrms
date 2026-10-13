@@ -75,3 +75,16 @@ export const TIMESHEET_IMPORT_COLUMNS = [
 /** MFA reset after out-of-band identity verification (lost authenticator). */
 export const mfaResetSchema = z.object({ reason: z.string().trim().min(10, 'Describe how the person’s identity was verified (min 10 characters)').max(500) });
 export const platformMfaResetSchema = mfaResetSchema.extend({ email: z.string().trim().toLowerCase().email() });
+
+/** Notification categories; each can be switched off for email (in-app notifications always appear). */
+export const NOTIFICATION_CATEGORIES = [
+  { key: 'approvals', label: 'Items waiting for my approval', mandatory: false },
+  { key: 'decisions', label: 'Decisions on requests I submitted or that concern me', mandatory: false },
+  { key: 'payroll', label: 'Payroll runs needing review or approval', mandatory: false },
+  { key: 'payslips', label: 'New payslips', mandatory: false },
+  { key: 'subscription', label: 'Subscription expiry and renewal reminders (administrators)', mandatory: true },
+] as const;
+export type NotificationCategory = (typeof NOTIFICATION_CATEGORIES)[number]['key'];
+export const notificationPreferencesSchema = z.object({
+  email: z.record(z.string(), z.boolean()),
+});

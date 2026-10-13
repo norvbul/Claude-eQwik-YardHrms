@@ -3,6 +3,7 @@ import { Prisma, type Employee } from '@prisma/client';
 import { addDays, intervalsOverlap, shiftHours, shiftInterval } from '@yardhrms/payroll-engine';
 import type { OvertimeInput, TimesheetInput } from '@yardhrms/types';
 import { AuditService } from '../audit/audit.service';
+import { NotificationService } from '../notifications/notification.service';
 import type { TenantAuth } from '../auth/auth-context';
 import { badRequest, businessRule, conflict, forbidden, invalidState, notFound } from '../common/errors';
 import { isoDay, paginate, todayIso, toDate } from '../common/util';
@@ -19,6 +20,7 @@ export class TimeService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly notifications: NotificationService,
   ) {}
 
   /** TIM-002 / AC-06: monthly employees never submit regular timesheets. */
@@ -122,6 +124,15 @@ export class TimeService {
     return this.prisma.tx(async (tx) => {
       const { employee, delegated } = await resolveSubject(tx, auth, 'timesheets', input.employeeId);
       const ts = await this.createTimesheetInTx(tx, auth, employee, input, { delegated, source: 'MANUAL' });
+      await this.notifications.requestSubmitted(tx, { tenantId: auth.tenantId, actorUserId: auth.user.id, actorName: auth.user.fullName }, {
+        kind: 'timesheet',
+        approvePermission: 'timesheets.approve',
+        employeeId: employee.id,
+        employeeName: `${employee.firstName} ${employee.lastName}`,
+        summary: `${input.workDate} ${input.startTime}–${input.endTime} (${ts.regularHours.toString()} regular hours)`,
+        link: '/app/timesheets',
+        id: ts.id,
+      });
       return { ...ts, workDate: isoDay(ts.workDate) };
     });
   }
@@ -173,6 +184,16 @@ export class TimeService {
       if (res.count !== 1) throw invalidState('Timesheet was already decided');
       await tx.timesheetApproval.create({ data: { tenantId: auth.tenantId, timesheetId: id, action: status, actorUserId: auth.user.id, comment: comment ?? null } });
       await this.audit.record({ tenantId: auth.tenantId, action: `timesheet.${status.toLowerCase()}`, entityType: 'Timesheet', entityId: id, subjectEmployeeId: ts.employeeId, before: { status: 'PENDING' }, after: { status }, reason: comment ?? null }, tx);
+      await this.notifications.requestDecided(tx, { tenantId: auth.tenantId, actorUserId: auth.user.id, actorName: auth.user.fullName }, {
+        kind: 'timesheet',
+        employeeId: ts.employeeId,
+        submittedByUserId: ts.submittedByUserId,
+        status,
+        summary: `Timesheet for ${ts.employee.firstName} ${ts.employee.lastName} on ${isoDay(ts.workDate)}`,
+        comment,
+        link: '/app/timesheets',
+        id,
+      });
       return { id, status };
     });
   }
@@ -221,6 +242,15 @@ export class TimeService {
         { tenantId: auth.tenantId, action: delegated ? 'overtime.submitted_delegated' : 'overtime.submitted', entityType: 'OvertimeRequest', entityId: ot.id, subjectEmployeeId: employee.id, after: { ...input, multiplier: rule.multiplier } },
         tx,
       );
+      await this.notifications.requestSubmitted(tx, { tenantId: auth.tenantId, actorUserId: auth.user.id, actorName: auth.user.fullName }, {
+        kind: 'overtime',
+        approvePermission: 'overtime.approve',
+        employeeId: employee.id,
+        employeeName: `${employee.firstName} ${employee.lastName}`,
+        summary: `${input.hours} hour(s) of ${rule.name} on ${input.workDate}`,
+        link: '/app/overtime',
+        id: ot.id,
+      });
       return { ...ot, workDate: input.workDate };
     });
   }
@@ -264,6 +294,16 @@ export class TimeService {
       if (res.count !== 1) throw invalidState('Overtime was already decided');
       await tx.overtimeApproval.create({ data: { tenantId: auth.tenantId, overtimeId: id, action: status, actorUserId: auth.user.id, comment: comment ?? null } });
       await this.audit.record({ tenantId: auth.tenantId, action: `overtime.${status.toLowerCase()}`, entityType: 'OvertimeRequest', entityId: id, subjectEmployeeId: ot.employeeId, before: { status: 'PENDING' }, after: { status }, reason: comment ?? null }, tx);
+      await this.notifications.requestDecided(tx, { tenantId: auth.tenantId, actorUserId: auth.user.id, actorName: auth.user.fullName }, {
+        kind: 'overtime',
+        employeeId: ot.employeeId,
+        submittedByUserId: ot.submittedByUserId,
+        status,
+        summary: `Overtime for ${ot.employee.firstName} ${ot.employee.lastName} on ${isoDay(ot.workDate)} (${ot.hours.toString()} h)`,
+        comment,
+        link: '/app/overtime',
+        id,
+      });
       return { id, status };
     });
   }

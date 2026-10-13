@@ -19,6 +19,7 @@ import { badRequest, businessRule, forbidden, invalidState, notFound, payrollLoc
 import { fullName, isoDay, toDate } from '../common/util';
 import { APP_CONFIG, type AppConfig } from '../config/config';
 import { JobsService } from '../jobs/jobs.service';
+import { NotificationService } from '../notifications/notification.service';
 import { PrismaService, Tx } from '../prisma/prisma.service';
 import { StatutoryService } from './statutory.service';
 
@@ -51,6 +52,7 @@ export class PayrollService {
     private readonly statutory: StatutoryService,
     private readonly crypto: CryptoService,
     private readonly jobs: JobsService,
+    private readonly notifications: NotificationService,
   ) {}
 
   async getRun(tenantId: string, id: string, client: Tx | PrismaService = this.prisma) {
@@ -420,6 +422,17 @@ export class PayrollService {
           { tenantId: auth.tenantId, action: 'payroll.run_prepared', entityType: 'PayrollRun', entityId: run.id, metadata: { ruleVersionId: version.id, totals, exceptions: exceptions.length } },
           tx,
         );
+        await this.notifications.notify(tx, {
+          tenantId: auth.tenantId,
+          userIds: await this.notifications.usersWithPermission(tx, auth.tenantId, 'payroll.review'),
+          excludeUserId: auth.user.id,
+          category: 'payroll',
+          type: 'payroll_review_requested',
+          title: `Payroll ${run.runNumber} is ready for review`,
+          body: `${auth.user.fullName} prepared ${run.frequency.toLowerCase()} payroll ${run.runNumber} (${isoDay(run.period.periodStart)} to ${isoDay(run.period.periodEnd)}, pay date ${isoDay(run.period.payDate)}): ${totals.employees} employee(s), net ${totals.net}${exceptions.length ? `, ${exceptions.length} exception(s)` : ''}.`,
+          link: `/app/payroll/runs/${run.id}`,
+          dedupeKey: `payroll:${run.id}:prepared:${Date.now()}`,
+        });
         return { totals, exceptions };
       },
       { timeout: 120_000 },
@@ -440,6 +453,17 @@ export class PayrollService {
       await this.assertSeparation(tx, auth, run, 'review');
       await tx.payrollRun.update({ where: { id: run.id }, data: { status: 'REVIEWED', reviewedById: auth.user.id, reviewedAt: new Date() } });
       await this.audit.record({ tenantId: auth.tenantId, action: 'payroll.run_reviewed', entityType: 'PayrollRun', entityId: run.id, reason: comment ?? null }, tx);
+      await this.notifications.notify(tx, {
+        tenantId: auth.tenantId,
+        userIds: (await this.notifications.usersWithPermission(tx, auth.tenantId, 'payroll.approve')).filter((u) => u !== run.preparedById),
+        excludeUserId: auth.user.id,
+        category: 'payroll',
+        type: 'payroll_approval_requested',
+        title: `Payroll ${run.runNumber} is ready for approval`,
+        body: `${auth.user.fullName} reviewed payroll ${run.runNumber} (pay date ${isoDay(run.period.payDate)}, net ${run.netTotal.toFixed(2)}).${comment ? ` Comment: “${comment}”` : ''}`,
+        link: `/app/payroll/runs/${run.id}`,
+        dedupeKey: `payroll:${run.id}:reviewed:${Date.now()}`,
+      });
     });
     return this.presentRun(await this.getRun(auth.tenantId, runId));
   }
@@ -506,6 +530,30 @@ export class PayrollService {
           }
         }
         await this.audit.record({ tenantId: auth.tenantId, action: 'payroll.run_approved', entityType: 'PayrollRun', entityId: run.id, reason: comment ?? null, metadata: { snapshotHash: hash, employees: rows.length } }, tx);
+        await this.notifications.notify(tx, {
+          tenantId: auth.tenantId,
+          userIds: [run.preparedById, run.reviewedById],
+          excludeUserId: auth.user.id,
+          category: 'payroll',
+          type: 'payroll_approved',
+          title: `Payroll ${run.runNumber} approved`,
+          body: `${auth.user.fullName} approved payroll ${run.runNumber}. Payslips are being issued; lock the run once bank payments are made.`,
+          link: `/app/payroll/runs/${run.id}`,
+          dedupeKey: `payroll:${run.id}:approved`,
+        });
+        if (run.runType !== 'REVERSAL') {
+          const members = await tx.tenantMembership.findMany({ where: { tenantId: auth.tenantId, status: 'ACTIVE', employeeId: { in: rows.map((r) => r.employeeId) } }, select: { userId: true } });
+          await this.notifications.notify(tx, {
+            tenantId: auth.tenantId,
+            userIds: members.map((m) => m.userId),
+            category: 'payslips',
+            type: 'payslip_available',
+            title: 'Your payslip is available',
+            body: `Your payslip for pay date ${isoDay(run.period.payDate)} is ready to view in eQwik YardHRMS. For your security, payslips are not attached to emails.`,
+            link: '/app/payslips',
+            dedupeKey: `payslip:${run.id}`,
+          });
+        }
       },
       { timeout: 120_000 },
     );

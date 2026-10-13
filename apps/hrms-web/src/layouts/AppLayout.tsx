@@ -28,6 +28,7 @@ import {
 import { useEffect, useState, type ComponentType } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useSession } from '@/lib/session';
+import { NotificationBell } from '@/components/notifications';
 
 interface NavItem {
   to: string;
@@ -216,7 +217,10 @@ export function AppLayout() {
               </p>
             </div>
           </div>
-          <div className="relative ml-auto">
+          <div className="ml-auto">
+            <NotificationBell />
+          </div>
+          <div className="relative">
             <button className="flex items-center gap-2 rounded-full p-1 pr-2 hover:bg-slate-100" onClick={() => setMenuOpen((o) => !o)} aria-haspopup="menu" aria-expanded={menuOpen}>
               <span className="grid h-8 w-8 place-items-center rounded-full bg-slate-800 text-xs font-semibold text-white">{initials(me!.user.fullName)}</span>
               <span className="hidden text-sm font-medium text-slate-700 sm:block">{me!.user.fullName}</span>
