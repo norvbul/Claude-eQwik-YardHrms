@@ -49,6 +49,8 @@ Backing services: **MySQL 8.4** (system of record; integrity triggers), **Redis 
          MySQL 8.4 (private) · Redis (private) · S3 bucket (private) · SMTP relay
 ```
 
+![Production topology](images/s01-architecture.png)
+
 Each web container proxies `/api` to the API so session cookies stay first-party on its own host name.
 
 ---
@@ -91,6 +93,10 @@ docker compose logs migrate  # shows migrations, seed output and demo credential
 | http://localhost:8080/api/docs | OpenAPI / Swagger UI |
 | http://localhost:8025 | Mailpit — verification, invitation, reset and notification emails |
 
+![OpenAPI / Swagger UI at /api/docs](images/s02-api-docs.png)
+
+*The interactive API reference at `/api/docs`.*
+
 The `migrate` service runs once (migrations + seed) and exits; this is expected. MySQL is started with
 `--log-bin-trust-function-creators=1` so the migration can create triggers.
 
@@ -103,6 +109,13 @@ The `migrate` service runs once (migrations + seed) and exits; this is expected.
 
 The demo password and the TOTP secret for the MFA-enrolled demo users are printed in the `migrate`
 logs. Demo payroll rules are labelled *DEMO ONLY — synthetic rates (NOT statutory)*.
+
+**Smoke test the stack** by registering a company at http://localhost:8080 → *Start Free*, opening the
+verification email in Mailpit, signing in and enrolling MFA:
+
+| Register | MFA enrolment at first sign-in |
+|---|---|
+| ![Registration form](images/s07-register.png) | ![MFA enrolment](images/s08-mfa-setup.png) |
 
 Stop with `docker compose down`; add `-v` to delete all data volumes and start fresh.
 
@@ -331,6 +344,14 @@ hand — database triggers block it by design.
    **proposal**; see [pricing](pricing.md)).
 4. Check the `BILLING_*` details by issuing a test invoice and opening its PDF; void it afterwards.
 
+![Licence Manager staff sign-in](images/s04-licence-sign-in.png)
+
+*Staff sign-in to the Licence Manager. Multi-factor authentication is mandatory.*
+
+![Licence Manager settings: platform policy, staff and MFA reset](images/s05-licence-staff.png)
+
+*Settings shows the effective platform policy (payment controls, MFA, compliance flag, session timeout) — a quick way to confirm the production configuration — plus staff management.*
+
 **Each company (HRMS, `app.<domain>`)** registers itself for the Free plan, or Qwik records a verified
 payment and activates a paid plan. The company administrator then follows the
 [user manual](user-manual.md) §3 "First-time company setup".
@@ -341,6 +362,10 @@ payment and activates a paid plan. The company administrator then follows the
 
 Sign-in buttons appear only for providers whose client ID and secret are set. SSO never creates
 accounts: users must already be registered or invited. MFA is still required for privileged roles.
+
+![Sign-in page with Google and Microsoft enabled](images/s06-sign-in-sso.png)
+
+*The sign-in page once both providers are configured.*
 
 **Google** (Google Cloud Console → APIs & Services → Credentials → *OAuth client ID*, type *Web
 application*)

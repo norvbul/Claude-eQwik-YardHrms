@@ -60,16 +60,22 @@ Some features depend on your plan: **Free** covers employees, leave and timeshee
 employees and 2 users; payroll, payslips, bulk imports, advanced reports and the audit log come with paid
 plans (see [pricing](pricing.md)).
 
+![Plans and prices](images/02-pricing.png)
+
 ## 2. Signing in and your account
 
 **Sign in.** Go to your company's YardHRMS address, choose **Sign in**, enter your email and password.
 If your organisation has enabled it you can use **Continue with Google** or **Continue with Microsoft**
 instead (your account must already exist — see below).
 
+![Sign-in page](images/s06-sign-in-sso.png)
+
 **Two-step verification (MFA).** The first time you sign in with an administrator, payroll or finance
 role you are asked to set up an authenticator app (Google Authenticator, Microsoft Authenticator,
 1Password, …): scan the QR code, then type the 6-digit code. After that, enter the current code at each
 sign-in.
+
+![Setting up two-step verification](images/s08-mfa-setup.png)
 
 **More than one company?** Pick the organisation after sign-in, or switch from the user menu (top right).
 The company you are working in is always shown in the sidebar and header.
@@ -87,6 +93,8 @@ the only administrator, contact Qwik support.
 - **Single sign-on** — link or unlink Google/Microsoft. Microsoft work accounts sometimes need linking
   here once (sign in with your password first, then *Link Microsoft*).
 
+![Account & security](images/30-account-security.png)
+
 **Accepting an invitation.** Open the link in the invitation email, set your password (or continue with
 Google/Microsoft using the invited email address) and you are in.
 
@@ -96,12 +104,21 @@ Sessions end after 30 minutes of inactivity or 12 hours in total (your provider 
 
 1. **Register** — on the landing page choose **Start Free**: legal and display name, your name, work
    email and password; accept the licence. Click the verification link in your email.
+
+   ![Registration form](images/s07-register.png)
+
 2. **Sign in and enrol MFA** (§2).
 3. **Company Settings → Profile & branding** — registered and trading names, TRN, NIS/NHT employer
    numbers, address and parish, contacts, logo (PNG/JPEG/WebP) and accent colour. Name and logo appear
    on screens, payslips and reports.
+
+   ![Company settings — profile and branding](images/31-company-settings.png)
+
 4. **Company Settings → master data tabs** — departments, branches, positions, employment types, shift
    types and **public holidays** (excluded from leave day counts and salary proration).
+
+   ![Public holidays](images/32-public-holidays.png)
+
 5. **Leave** — set up leave types and policies (§6).
 6. **Employees** — add them one by one (§5) or import them (§11).
 7. **Users & Roles** — invite colleagues and give them roles (§12).
@@ -161,10 +178,14 @@ compensation and employment history, and leave balances.
 **Set-up (HR Officer / Administrator)** — *Leave → Types & policies*: **Add type** (name, paid percentage, whether
 a document is required) and **Add policy**: annual entitlement, accrual method, carry-forward limit and expiry.
 
+![Leave types and policies](images/34-leave-setup.png)
+
 **Requesting leave** — *Leave → New leave request*: type, start and end date (tick *Half day at
 start/end* where needed),
 reason, attachment if required. Working days exclude weekends and public holidays. You see your balance
 before submitting.
+
+![New leave request](images/35-leave-request.png)
 
 **On behalf of someone** — HR, Payroll and Managers can record leave for an employee (e.g. a phoned-in
 sick day). The record shows both the employee and who entered it.
@@ -176,6 +197,8 @@ approver.
 **Balances** come from a ledger that cannot be edited: opening balances, monthly accruals (automatic),
 leave taken, adjustments (with a reason), year-end carry-forward and expiry. Approved unpaid or part-paid
 leave reduces pay in the period it falls in.
+
+![Leave balances and ledger](images/33-leave-balances.png)
 
 ## 7. Timesheets and overtime
 
@@ -192,6 +215,8 @@ calculated for you. The system rejects duplicates, overlapping times and dates i
 staff), date, hours and overtime rule (e.g. time-and-a-half). Overtime is approved separately from
 timesheets.
 
+![Overtime requests](images/36-overtime.png)
+
 **Approval** — every entry starts **Pending** and must be approved by someone other than the person
 who entered it. Tick the rows and use **Approve selected** for bulk approval. Only approved time reaches
 payroll.
@@ -203,6 +228,8 @@ start. Open **Payroll Setup**.
 
 **Pay frequencies** — standard hours and working days per period, and the **tax-year start** used for
 year-to-date (cumulative) calculations.
+
+![Pay frequencies and tax-year start](images/37-pay-frequencies.png)
 
 **Overtime rules** — name and multiplier.
 
@@ -236,6 +263,10 @@ and whether they reduce statutory income.
 | 5. **Approve** | Finance Approver | Freezes the figures and issues payslips to employees |
 | 6. **Lock** | Finance Approver | Closes the period: its timesheets, leave and overtime can no longer change |
 | 7. **Bank file** | Payroll Officer | Download CSV/XLSX for your bank's bulk upload; employees without a bank account are listed separately |
+
+![New payroll run](images/38-new-payroll-run.png)
+
+*Step 1 — creating a run.*
 
 ![Payroll run detail](images/10-payroll-run-detail.png)
 
@@ -276,11 +307,15 @@ export to **CSV, XLSX or PDF**. Exports are recorded in the audit log.
 4. Every row ends as **Created, Updated, Rejected or Skipped** with a reason. Download the error file, fix
    the rejected rows and upload again — rows already imported are not duplicated.
 
+![Bulk imports](images/39-imports.png)
+
 For employees, a blank employee number creates a new employee and an existing number updates that
 employee (blank cells keep existing values). Timesheet imports follow the same rules as manual entry.
 
 **Audit log** (Professional and Business plans) — who did what and when, with before/after values for
 changes. Filter by user, action, record or date. Nobody can edit or delete entries.
+
+![Audit log](images/40-audit-log.png)
 
 ## 12. Users and roles
 
@@ -290,6 +325,9 @@ changes. Filter by user, action, record or date. Nobody can edit or delete entri
   employee record. Invitations count against your user seats until accepted or cancelled.
 - **Change roles** — open the user, adjust roles, save. Changes apply at once.
 - **Custom roles** — *Roles → Custom role*, name it and pick permissions from the list.
+
+  ![Roles and permissions](images/42-roles.png)
+
 - **Deactivate** — signs the user out immediately and frees the seat.
 - **Reset MFA** — for a colleague who lost their phone: confirm who they are first (in person, or call
   back on a number you already have), record how you checked, then reset. They are signed out
@@ -304,8 +342,11 @@ changes. Filter by user, action, record or date. Nobody can edit or delete entri
 
 - **Upgrading or renewing.** Pay Qwik Business Solutions by bank transfer, cash or cheque, quoting your
   invoice number. When Qwik has verified the payment you either receive a **one-time activation code**
-  (enter it on the *Subscription* page and choose **Redeem code**) or Qwik applies the plan directly. Renewals extend your
-  current subscription — no new code.
+  (enter it on the *Subscription* page and choose **Redeem code**) or Qwik applies the plan directly.
+  Renewals extend your current subscription — no new code.
+
+  ![Subscription page with Redeem code](images/41-subscription.png)
+
 - **Grace period.** When the paid period ends, a banner warns you for the plan's grace days; everything
   still works.
 - **Expired or suspended.** The workspace becomes **read-only**: you can still view and export everything,
@@ -337,6 +378,8 @@ If you receive a request from an employee to see or correct their data, use the 
 reports to respond; the audit log shows who accessed or changed it.
 
 ## 15. Employee self-service quick guide
+
+![My Profile (employee view)](images/44-my-profile.png)
 
 | I want to… | Go to |
 |---|---|
@@ -373,6 +416,8 @@ data**.
 
 ## 17. Signing in and roles
 
+![Licence Manager sign-in](images/s04-licence-sign-in.png)
+
 Sign in with your staff email and password; two-step verification is always required. New staff receive
 a password-setup link.
 
@@ -389,6 +434,8 @@ a password-setup link.
 user limits, grace days, status and features (Employees, Leave, Timesheets, Overtime, Payroll, Payslips,
 Bulk import, Advanced reports, Audit view). Changes apply to every company on the plan at its next check
 and never delete data. Retire old plans instead of deleting them.
+
+![Customers](images/50-licence-customers.png)
 
 **Customers** — the paying party: name, contact, email, phone, address, TRN, notes, and the linked
 company workspace. Companies that self-register already have a workspace on the Free plan; create or
@@ -432,6 +479,8 @@ A verified payment can fund **one** subscription activation or renewal.
   issue a new one.
 - **Apply directly** to the linked company — activates at once.
 
+![Authorization codes](images/52-licence-codes.png)
+
 Without a verified payment only a Super Admin can proceed, with a written **commercial override** reason
 (audited).
 
@@ -468,6 +517,12 @@ anything; the company just cannot add more until it is within the limits.
 - **Settings → Reset an account's MFA** — for a company's only administrator or a staff member who lost
   their authenticator. Verify identity out of band first and record how; the person is signed out
   everywhere and notified by email.
+
+| Usage monitoring | Platform audit |
+|---|---|
+| ![Usage monitoring](images/54-licence-usage.png) | ![Platform audit](images/55-licence-audit.png) |
+
+![Settings — staff and MFA reset](images/s05-licence-staff.png)
 
 ## 22. Account closures and legal holds
 
