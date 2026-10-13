@@ -13,3 +13,4 @@ playwright-report/
 .vite/
 *.tsbuildinfo
 .DS_Store
+.storage-test/

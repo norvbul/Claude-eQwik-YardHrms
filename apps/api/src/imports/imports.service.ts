@@ -219,16 +219,24 @@ export class ImportsService implements OnModuleInit {
 
     if (mode === 'CREATE') {
       const parsed = employeeCreateSchema.safeParse({ ...payload, employeeNumber: payload.employeeNumber ?? 'PENDING-AUTO', overtimeEligible: payload.overtimeEligible ?? false, statutoryExemptions: [] });
-      if (!parsed.success) for (const i of parsed.error.issues) errors.push({ field: i.path.join('.'), message: i.message });
+      if (!parsed.success) for (const i of parsed.error.issues) errors.push(this.friendly(i));
       return { mode, errors, payload: parsed.success ? { ...parsed.data, employeeNumber: payload.employeeNumber as string | undefined } : null, existingId: undefined };
     }
     const { payFrequency, payType, salaryPerPeriod, hourlyRate, overtimeEligible, ...personal } = payload;
     const parsed = employeeUpdateSchema.safeParse({ ...personal, employeeNumber: undefined, version: 0 });
-    if (!parsed.success) for (const i of parsed.error.issues) errors.push({ field: i.path.join('.'), message: i.message });
+    if (!parsed.success) for (const i of parsed.error.issues) errors.push(this.friendly(i));
     const comp = { payFrequency, payType, salaryPerPeriod, hourlyRate, overtimeEligible };
     if (payFrequency && !['WEEKLY', 'FORTNIGHTLY', 'MONTHLY'].includes(payFrequency as string)) errors.push({ field: 'payFrequency', message: 'Invalid pay frequency' });
     if (payType && !['SALARY', 'HOURLY'].includes(payType as string)) errors.push({ field: 'payType', message: 'Invalid pay type' });
     return { mode, errors, payload: parsed.success ? { personal: parsed.data, comp } : null, existingId: existing!.id };
+  }
+
+  /** Turns schema issues into spreadsheet-friendly messages that reference the template column label. */
+  private friendly(issue: { path: PropertyKey[]; message: string; code: string; input?: unknown }): RowError {
+    const field = issue.path.map(String).join('.');
+    const label = COLUMNS.EMPLOYEES.find((c) => c.key === field)?.label ?? field;
+    if (issue.code === 'invalid_type' && (issue.input === undefined || issue.input === null)) return { field, message: `${label} is required` };
+    return { field, message: `${label}: ${issue.message}` };
   }
 
   private timesheetRow(v: Record<string, string>, refs: RefMaps, seen: Set<string>) {

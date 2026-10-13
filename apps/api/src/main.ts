@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import path from 'node:path';
 import dotenv from 'dotenv';
-dotenv.config({ path: process.env.DOTENV_PATH ?? path.resolve(__dirname, '../../../.env') });
+dotenv.config({ path: process.env.DOTENV_PATH ?? path.resolve(__dirname, '../../../.env'), quiet: true });
 
 import { Logger } from '@nestjs/common';
 import { createApp } from './app.factory';
