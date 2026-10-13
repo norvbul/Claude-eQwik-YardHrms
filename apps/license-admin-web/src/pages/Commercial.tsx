@@ -30,7 +30,7 @@ import {
   useConfirm,
   useToast,
 } from '@yardhrms/ui';
-import { BadgeCheck, Building2, CalendarClock, CheckCircle2, CreditCard, Paperclip, Plus, Users, XCircle } from 'lucide-react';
+import { BadgeCheck, Building2, CalendarClock, CheckCircle2, CreditCard, FileText, Paperclip, Plus, Users, XCircle } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
@@ -198,6 +198,7 @@ export function CustomerDetail() {
   const [paying, setPaying] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
   const navigate = useNavigate();
+  const toast = useToast();
   if (q.isLoading) return <Spinner />;
   const c = q.data;
   if (!c) return <EmptyState title="Customer not found" />;
@@ -210,6 +211,18 @@ export function CustomerDetail() {
         actions={
           <>
             {can('platform.customers.write') && <Button variant="outline" onClick={() => setEditing(true)}>Edit</Button>}
+            {can('platform.payments.read') && (
+              <Button
+                variant="outline"
+                icon={<FileText className="h-4 w-4" />}
+                onClick={() => {
+                  const y = new Date().getFullYear();
+                  api.download(`/platform/customers/${c.id}/statement?from=${y}-01-01&to=${new Date().toISOString().slice(0, 10)}`, { open: true }).catch((x) => toast.error('Statement failed', errorMessage(x)));
+                }}
+              >
+                Statement
+              </Button>
+            )}
             {can('platform.payments.record') && <Button variant="outline" icon={<CreditCard className="h-4 w-4" />} onClick={() => setPaying(true)}>Record payment</Button>}
             {can('platform.subscriptions.manage') && <Button icon={<Plus className="h-4 w-4" />} onClick={() => setSubscribing(true)}>New subscription</Button>}
           </>
@@ -373,7 +386,7 @@ export function Plans() {
   const selected: string[] = form.watch('features') ?? [];
   return (
     <>
-      <PageHeader title="Plans & features" description="Prices are intentionally unset until approved by Qwik. All limits and entitlements are editable." actions={can('platform.catalog.manage') && <Button icon={<Plus className="h-4 w-4" />} onClick={() => setEditing({})}>New plan</Button>} />
+      <PageHeader title="Plans & features" description="Seeded prices are researched proposals pending owner approval. All prices, limits and entitlements are editable." actions={can('platform.catalog.manage') && <Button icon={<Plus className="h-4 w-4" />} onClick={() => setEditing({})}>New plan</Button>} />
       <Card>
         <DataTable
           rows={q.data}
@@ -611,6 +624,11 @@ export function PaymentDetail() {
                 </Button>
                 <Button variant="outline" onClick={() => act('reject')}>Reject</Button>
               </>
+            )}
+            {['VERIFIED', 'REVERSED'].includes(p.status) && (
+              <Button variant="outline" icon={<FileText className="h-4 w-4" />} onClick={() => api.download(`/platform/payments/${p.id}/receipt`, { open: true }).catch((x) => toast.error('Receipt failed', errorMessage(x)))}>
+                Receipt PDF
+              </Button>
             )}
             {p.status === 'VERIFIED' && can('platform.payments.reverse') && <Button variant="danger" onClick={() => act('reverse')}>Reverse</Button>}
           </>

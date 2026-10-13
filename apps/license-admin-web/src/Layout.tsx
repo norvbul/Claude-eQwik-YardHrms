@@ -1,5 +1,5 @@
 import { Button, Spinner, cn, initials } from '@yardhrms/ui';
-import { Activity, BadgeCheck, Building2, CalendarClock, CreditCard, FileKey2, Gauge, KeyRound, Layers, LogOut, Menu, Package, ScrollText, Settings, X, ShieldOff } from 'lucide-react';
+import { Activity, BadgeCheck, Building2, CalendarClock, CreditCard, FileKey2, Gauge, KeyRound, Layers, LogOut, Menu, Package, ScrollText, Settings, X, ShieldOff, FileText } from 'lucide-react';
 import { useEffect, useState, type ComponentType } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useSession } from './lib/session';
@@ -17,6 +17,7 @@ const NAV: Item[] = [
   { to: '/products', label: 'Products', icon: Package, perm: 'platform.customers.read' },
   { to: '/plans', label: 'Plans & Features', icon: Layers, perm: 'platform.customers.read' },
   { to: '/payments', label: 'Manual Payments', icon: CreditCard, perm: 'platform.payments.read' },
+  { to: '/invoices', label: 'Invoices', icon: FileText, perm: 'platform.payments.read' },
   { to: '/subscriptions', label: 'Subscriptions', icon: BadgeCheck, perm: 'platform.subscriptions.read' },
   { to: '/licences', label: 'Licences', icon: FileKey2, perm: 'platform.subscriptions.read' },
   { to: '/codes', label: 'Authorization Codes', icon: KeyRound, perm: 'platform.subscriptions.read' },

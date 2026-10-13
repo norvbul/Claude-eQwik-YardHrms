@@ -10,10 +10,16 @@ module.exports = async () => {
   const { PrismaClient } = require('@prisma/client');
   const prisma = new PrismaClient({ datasources: { db: { url: testUrl } } });
   try {
-    const tables = await prisma.$queryRawUnsafe('SELECT table_name AS t FROM information_schema.tables WHERE table_schema = DATABASE()');
-    await prisma.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 0');
-    for (const row of tables) await prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS \`${String(row.t ?? row.T ?? row.TABLE_NAME).replace(/`/g, '')}\``);
-    await prisma.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 1');
+    // One pinned connection: FOREIGN_KEY_CHECKS is a session setting.
+    await prisma.$transaction(
+      async (tx) => {
+        const tables = await tx.$queryRawUnsafe('SELECT table_name AS t FROM information_schema.tables WHERE table_schema = DATABASE()');
+        await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 0');
+        for (const row of tables) await tx.$executeRawUnsafe(`DROP TABLE IF EXISTS \`${String(row.t ?? row.T ?? row.TABLE_NAME).replace(/`/g, '')}\``);
+        await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 1');
+      },
+      { timeout: 120000 },
+    );
   } catch (e) {
     if (!/does not exist|P1003|Unknown database/i.test(String(e?.message ?? e))) throw e;
   } finally {

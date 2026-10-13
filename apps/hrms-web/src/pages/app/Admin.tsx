@@ -24,6 +24,7 @@ import {
   formatDateTime,
   useConfirm,
   useToast,
+  formatMoney,
 } from '@yardhrms/ui';
 import { CreditCard, ImageUp, KeyRound, Mail, Plus, ShieldCheck, Trash2, UserPlus } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -689,8 +690,39 @@ export function Subscription() {
             ]}
           />
         </Card>
+        <BillingDocuments />
       </div>
     </>
+  );
+}
+
+/** LIC-014: invoices, receipts and statements issued by Qwik for this company (read-only). */
+function BillingDocuments() {
+  const q = useApi<{ invoices: any[]; receipts: any[] }>(['billing-docs'], '/subscription/billing');
+  const toast = useToast();
+  const open = (path: string) => api.download(path, { open: true }).catch((e) => toast.error('Could not open document', errorMessage(e)));
+  const year = new Date().getFullYear();
+  return (
+    <Card className="lg:col-span-3">
+      <CardHeader
+        title="Billing documents"
+        description="Invoices and receipts from Qwik Business Solutions. Payments are made by bank transfer, cash or cheque — never inside the app."
+        actions={<Button size="sm" variant="outline" onClick={() => open(`/subscription/billing/statement?from=${year}-01-01&to=${new Date().toISOString().slice(0, 10)}`)}>Statement {year}</Button>}
+      />
+      <DataTable
+        rows={[...(q.data?.invoices ?? []).map((i) => ({ ...i, kind: 'Invoice', date: i.issueDate, amount: i.total, path: `/subscription/billing/invoices/${i.id}/pdf` })), ...(q.data?.receipts ?? []).map((r) => ({ ...r, id: r.paymentId, kind: 'Receipt', path: `/subscription/billing/receipts/${r.paymentId}/pdf` }))].sort((a, b) => String(b.date).localeCompare(String(a.date)))}
+        loading={q.isLoading}
+        rowKey={(r: any) => `${r.kind}-${r.id}`}
+        empty={<EmptyState title="No billing documents yet" />}
+        columns={[
+          { key: 'kind', header: 'Document', cell: (r: any) => <span><span className="font-medium">{r.kind}</span> <span className="font-mono text-xs text-slate-500">{r.number}</span></span> },
+          { key: 'date', header: 'Date', cell: (r: any) => formatDate(r.date) },
+          { key: 'amount', header: 'Amount', align: 'right', cell: (r: any) => formatMoney(r.amount, r.currency) },
+          { key: 'status', header: 'Status', cell: (r: any) => <StatusBadge status={r.status} /> },
+          { key: 'x', header: '', cell: (r: any) => <Button size="sm" variant="ghost" onClick={() => open(r.path)}>PDF</Button> },
+        ]}
+      />
+    </Card>
   );
 }
 

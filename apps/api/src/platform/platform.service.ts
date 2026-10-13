@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { FEATURE_CATALOG, effectiveSubscriptionState, type SubscriptionState } from '@yardhrms/authorization';
+import { BillingService } from '../billing/billing.service';
 import { AuditService } from '../audit/audit.service';
 import type { AuthContext } from '../auth/auth-context';
 import { CryptoService } from '../common/crypto.service';
@@ -24,6 +25,7 @@ export class PlatformService {
     private readonly audit: AuditService,
     private readonly crypto: CryptoService,
     private readonly entitlements: EntitlementsService,
+    private readonly billing: BillingService,
   ) {}
 
   private pa(auth: AuthContext, input: Parameters<AuditService['record']>[0]) {
@@ -277,6 +279,7 @@ export class PlatformService {
       });
       if (res.count !== 1) throw invalidState('Payment changed concurrently');
       await tx.manualPaymentEvent.create({ data: { paymentId: id, fromStatus: p.status, toStatus: to, actorId: auth.user.id, actorEmail: auth.user.email, reason: reason ?? null } });
+      if (to === 'VERIFIED' || to === 'REVERSED') await this.billing.reconcilePayment(tx, id);
       if (to === 'REVERSED' && p.subscriptionId) {
         await tx.subscriptionEvent.create({
           data: { subscriptionId: p.subscriptionId, tenantId: p.tenantId, type: 'PAYMENT_REVERSED', actorUserId: auth.user.id, reason, data: { paymentId: p.id, amount: p.amount.toFixed(2) } },

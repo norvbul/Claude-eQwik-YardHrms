@@ -112,3 +112,21 @@ export const staffSchema = z.object({
   fullName: z.string().trim().min(2).max(120),
   platformRole: z.enum(['PLATFORM_SUPER_ADMIN', 'PLATFORM_LICENSING_OFFICER']),
 });
+
+export const invoiceLineSchema = z.object({
+  description: z.string().trim().min(2).max(200),
+  quantity: z.coerce.number().positive().max(10000).default(1),
+  unitPrice: positiveMoney,
+});
+export const invoiceCreateSchema = z
+  .object({
+    customerId: z.string().min(1),
+    planId: optionalText(64),
+    subscriptionId: optionalText(64),
+    issueDate: optionalIsoDate,
+    dueDays: blankable(z.coerce.number().int().min(0).max(120)),
+    lines: z.array(invoiceLineSchema).max(30).default([]),
+    notes: optionalText(1000),
+  })
+  .refine((v) => v.lines.length > 0 || !!v.planId, { path: ['lines'], message: 'Add at least one line or choose a plan' });
+export const invoiceVoidSchema = z.object({ reason: z.string().trim().min(3).max(500) });

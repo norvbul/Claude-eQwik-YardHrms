@@ -581,6 +581,7 @@ model Customer {
   tenant        Tenant?         @relation(fields: [tenantId], references: [id])
   subscriptions Subscription[]
   payments      ManualPayment[]
+  invoices      Invoice[]
   codes         ActivationCode[]
 
   @@index([name])
@@ -694,6 +695,9 @@ model ManualPayment {
   customer     Customer              @relation(fields: [customerId], references: [id])
   subscription Subscription?         @relation(fields: [subscriptionId], references: [id])
   history      ManualPaymentEvent[]
+  receipt      Receipt?
+  invoice      Invoice?          @relation(fields: [invoiceId], references: [id])
+  invoiceId    String?           @map("invoice_id") @db.Char(36)
   evidence     PaymentEvidence[]
 
   @@unique([customerId, reference])
@@ -1882,4 +1886,66 @@ model RetentionRun {
 
   @@index([tenantId, startedAt])
   @@map("retention_runs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Billing documents (LIC-014) — invoices, receipts, statements. No payment collection in-app.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Gap-free document numbering per series and year (row-locked). */
+model DocumentSequence {
+  key       String   @id @db.VarChar(40)
+  next      Int      @default(1)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("document_sequences")
+}
+
+enum InvoiceStatus {
+  ISSUED
+  PAID
+  VOID
+}
+
+model Invoice {
+  id             String        @id @default(uuid()) @db.Char(36)
+  number         String        @unique @db.VarChar(30)
+  customerId     String        @map("customer_id") @db.Char(36)
+  subscriptionId String?       @map("subscription_id") @db.Char(36)
+  planId         String?       @map("plan_id") @db.Char(36)
+  issueDate      DateTime      @map("issue_date") @db.Date
+  dueDate        DateTime      @map("due_date") @db.Date
+  currency       String        @db.Char(3)
+  /// [{ description, quantity, unitPrice, amount }]
+  lines          Json
+  subtotal       Decimal       @db.Decimal(18, 2)
+  taxRate        Decimal       @default(0) @map("tax_rate") @db.Decimal(6, 4)
+  taxAmount      Decimal       @default(0) @map("tax_amount") @db.Decimal(18, 2)
+  total          Decimal       @db.Decimal(18, 2)
+  status         InvoiceStatus @default(ISSUED)
+  notes          String?       @db.VarChar(1000)
+  voidReason     String?       @map("void_reason") @db.VarChar(500)
+  storageKey     String?       @map("storage_key") @db.VarChar(255)
+  createdById    String        @map("created_by_id") @db.Char(36)
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  customer Customer        @relation(fields: [customerId], references: [id])
+  payments ManualPayment[]
+
+  @@index([customerId, issueDate])
+  @@map("invoices")
+}
+
+model Receipt {
+  id          String   @id @default(uuid()) @db.Char(36)
+  number      String   @unique @db.VarChar(30)
+  paymentId   String   @unique @map("payment_id") @db.Char(36)
+  issuedAt    DateTime @default(now()) @map("issued_at")
+  storageKey  String?  @map("storage_key") @db.VarChar(255)
+  createdById String   @map("created_by_id") @db.Char(36)
+
+  payment ManualPayment @relation(fields: [paymentId], references: [id])
+
+  @@map("receipts")
 }

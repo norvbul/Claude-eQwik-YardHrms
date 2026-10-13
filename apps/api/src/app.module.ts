@@ -29,8 +29,10 @@ import { NotificationsController } from './notifications/notifications.controlle
 import { DataLifecycleController, PlatformDataLifecycleController } from './retention/data-lifecycle.controller';
 import { DataExportService } from './retention/data-export.service';
 import { RetentionService } from './retention/retention.service';
+import { PlatformBillingController, TenantBillingController } from './billing/billing.controller';
+import { BillingService } from './billing/billing.service';
 
-export const DOMAIN_PROVIDERS = [AuthService, EmployeesService, LeaveService, TimeService, StatutoryService, PayrollService, PayslipService, ImportsService, ReportsService, PlatformService, RetentionService, DataExportService];
+export const DOMAIN_PROVIDERS = [AuthService, EmployeesService, LeaveService, TimeService, StatutoryService, PayrollService, PayslipService, ImportsService, ReportsService, PlatformService, RetentionService, DataExportService, BillingService];
 
 @Module({
   imports: [CoreModule],
@@ -55,6 +57,8 @@ export const DOMAIN_PROVIDERS = [AuthService, EmployeesService, LeaveService, Ti
     NotificationsController,
     DataLifecycleController,
     PlatformDataLifecycleController,
+    PlatformBillingController,
+    TenantBillingController,
   ],
   providers: [{ provide: APP_GUARD, useClass: AuthGuard }, ...DOMAIN_PROVIDERS],
 })
