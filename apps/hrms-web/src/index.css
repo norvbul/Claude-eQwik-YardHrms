@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand: 11 93 59; /* #0b5d3b Qwik green */
+  --accent: 242 183 5; /* #f2b705 gold */
+}
+
+@layer base {
+  html { -webkit-tap-highlight-color: transparent; }
+  :focus-visible { outline: 2px solid rgb(var(--brand) / 0.5); outline-offset: 2px; }
+}
+
+@media print {
+  .no-print { display: none !important; }
+}

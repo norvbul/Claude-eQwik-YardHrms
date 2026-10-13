@@ -1,6 +1,6 @@
 {
   "extends": "./tsconfig.json",
-  "compilerOptions": { "rootDir": "src", "types": ["node", "multer"] },
+  "compilerOptions": { "rootDir": "src", "declaration": true, "types": ["node", "multer"] },
   "include": ["src"],
   "exclude": ["test", "src/**/*.spec.ts"]
 }

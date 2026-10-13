@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "noUnusedLocals": true,
+    "noFallthroughCasesInSwitch": true,
+    "types": ["vite/client"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@yardhrms/ui": ["../../packages/ui/src/index.ts"],
+      "@yardhrms/types": ["../../packages/types/src/index.ts"],
+      "@yardhrms/authorization": ["../../packages/authorization/src/index.ts"]
+    }
+  },
+  "include": ["src"]
+}
